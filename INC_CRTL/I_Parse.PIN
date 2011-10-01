@@ -1,0 +1,392 @@
+(*Ôóíêöèè àíàëèçà ñòðîê è ðàáîòû ñ ìàññèâàìè ñòðîê*)
+//ÍÅÎÁÕÎÄÈÌÎ ÈÑÊËÞ×ÈÒÜ UCRTL_ID_PREPARE ÈÇ_ÁÎËÜØÈÕ_ÔÓÍÊÖÈÉ!!!
+
+Function Split(Expr:String;Delimiter:String;var Rslt:TStrArray;LoseDelimiter:Boolean=False;ProgressProc:TProgressProc=nil):Integer;
+Var ISC,Fin,DL:Integer;
+    DS:String;
+Begin
+Result:=0;
+DL:=Length(Delimiter);
+ISC:=Length(Expr);
+SetLength(Rslt,0);
+
+ Fin:=Instr(Expr,Delimiter);
+ While Fin>0 do
+  Begin
+   if LoseDelimiter then DS:=Mid(Expr,1,Fin-1)
+                        Else DS:=Mid(Expr,1,Fin+DL-1);
+ //  DS:=Mid(Expr,1,Fin-1);
+   AppendElement(Rslt,DS);
+   Delete(Expr,1,Fin+DL-1);
+   If Assigned(ProgressProc) then
+     if not(ProgressProc(ISC-Length(Expr),ISC,UCRTL_ID_SPLIT)) then exit;
+   Fin:=Instr(Expr,Delimiter);
+  End;//Wend
+  AppendElement(Rslt,Expr);
+  Result:=Length(Rslt);
+End;//Split
+
+Function FastSplit(Expr:String;Delimiter:String;var Rslt:TStrArray;LoseDelimiter:Boolean=False;ProgressProc:TProgressProc=nil):Integer;
+Var SA,tmpRslt:TStrArray;
+    j:Integer;
+    RestStr:String;
+Begin
+SetLength(Rslt,0);
+Result:=0;
+if expr='' then exit;
+SplitToEqParts(Expr,FastMidBlockSize,SA);
+//!!TODO regular ProgressProc
+For j:=0 to High(SA)-1 do
+ Begin
+  Split(SA[j],Delimiter,tmpRslt,LoseDelimiter);
+   RestStr:=tmpRslt[High(tmpRslt)];
+   if length(tmpRslt)>1 then
+    Begin
+     SetLength(tmpRslt,High(tmpRslt));
+     AppendNElements(Rslt,tmpRslt);
+    End;
+  SA[j+1]:=RestStr+SA[j+1];
+   If Assigned(ProgressProc) then
+    if not(ProgressProc(j,length(SA),UCRTL_ID_SPLIT)) then
+     Begin
+      Result:=Length(Rslt);     
+      exit;
+     End; 
+ End;
+Split(SA[High(SA)],Delimiter,tmpRslt,LoseDelimiter,ProgressProc);
+AppendNElements(Rslt,tmpRslt);
+
+Result:=Length(Rslt);
+End;//FastSplit
+
+
+Function KillSpaces(Expr:String):String;
+Begin
+Result:=Expr;
+Replace(Result,Chr($09),'');
+Replace(Result,Chr($0A),'');
+Replace(Result,Chr($0D),'');
+Replace(Result,Chr($20),'');
+End;
+
+
+
+Function SplitToWords(Expr:String;Var Wds:TStrArray;ProgressProc:TProgressProc=nil):Integer;
+Var TmpStr:String;
+    SpPos:Integer;
+Begin
+TmpStr:=Expr;
+Result:=0;
+  If Assigned(ProgressProc) then
+    if not(ProgressProc(0,5,UCRTL_ID_PREPARE)) then exit;
+Replace(TmpStr,Chr($09),Chr(32));
+
+  If Assigned(ProgressProc) then
+    if not(ProgressProc(1,5,UCRTL_ID_PREPARE)) then exit;
+Replace(TmpStr,Chr($0A),Chr(32));
+
+  If Assigned(ProgressProc) then
+    if not(ProgressProc(2,5,UCRTL_ID_PREPARE)) then exit;
+Replace(TmpStr,Chr($0D),Chr(32));
+
+  If Assigned(ProgressProc) then
+    if not(ProgressProc(3,5,UCRTL_ID_PREPARE)) then exit;
+SpPos:=Pos('  ',TmpStr);
+While SpPos<>0 do
+Begin
+ delete(TmpStr,SpPos,1);
+ SpPos:=Pos('  ',TmpStr);
+End;
+
+ If Assigned(ProgressProc) then
+   if not(ProgressProc(4,5,UCRTL_ID_PREPARE)) then exit;
+
+SpPos:=Length(TmpStr);
+if SpPos<2 then
+Begin
+ SetLength(Wds,1);
+ Wds[0]:=TmpStr;
+ exit;
+End;
+if TmpStr[SpPos]=Chr(32) then SetLength(TmpStr,SpPos-1);
+if TmpStr[1]=Chr(32) then delete(TmpStr,1,1);
+
+Result:=FastSplit(TmpStr,Chr(32),Wds,True,ProgressProc);
+End;//SplitToWords
+
+Function SplitToParagraphs(Expr:String;Var Paras:TStrArray;AllowEmptyParagraphs:Boolean=False;ProgressProc:TProgressProc=nil):Integer;
+var j2:Integer;
+Begin
+Result:=0;
+if length(Expr)=0 then
+ Begin
+  SetLength(Paras,0);
+  exit;
+ End;
+if length(Expr)=1 then
+ if not((Expr[1]=#10) or (Expr[1]=#13)) then
+  Begin
+   SetLength(Paras,1);
+   Paras[0]:=Expr;
+   Result:=1;
+   Exit;
+  End
+ Else
+  Begin
+   SetLength(Paras,0);
+   exit;
+  End;
+//Èñïðàâëåíèå äîñàäíîé îøèáêè...
+  If Assigned(ProgressProc) then
+    if not(ProgressProc(0,2,UCRTL_ID_PREPARE)) then exit;
+Expr:=EOLtoCRLF(Expr);
+
+  If Assigned(ProgressProc) then
+    if not(ProgressProc(1,2,UCRTL_ID_PREPARE)) then exit;
+if not(AllowEmptyParagraphs) then
+ Begin
+   While Instr(Expr,vbcrlf+vbcrlf,1)<>0 do
+         Replace(Expr,vbcrlf+vbcrlf,vbcrlf);
+
+  if Expr[1]+Expr[2]=vbcrlf then delete(Expr,1,2);
+  //ïåðâûé vbcrlf
+  if length(expr)>1 then
+   Begin
+    j2:=length(Expr)-1;
+    if Expr[J2]+Expr[J2+1]=vbcrlf then delete(Expr,J2,2);
+   End; 
+
+ End;
+
+Result:=FastSplit(Expr,vbcrlf,Paras,True,ProgressProc);
+End;//SplitToParagraphs
+
+Function SplitToDoubleParagraphs(Expr:String;Var Paras:TStrArray;AllowEmptyParagraphs:Boolean=False;ProgressProc:TProgressProc=nil):Integer;
+Var j:Integer;
+Begin
+Expr:=EOLtoCRLF(Expr);
+Replace(Expr,VbCrLf2,#19#19#19#19);
+Replace(Expr,VbCrLf,#18#18);
+Replace(Expr,#19#19#19#19,vbcrlf);
+Result:=SplitToParagraphs(Expr,Paras,AllowEmptyParagraphs,ProgressProc);
+For j:=0 to high(Paras) do replace(paras[j],#18#18,vbcrlf);
+End;
+
+
+
+Function SplitToEqParts(Expr:String;PartSize:Integer;var Rslt:TStrArray;ProgressProc:TProgressProc=nil):Integer;
+Var Ln,j:Integer;
+Begin
+SetLength(Rslt,0);
+ln:=(Length(Expr) div PartSize);
+For j:=0 to ln-1 do
+ Begin
+  AppendElement(Rslt,copy(Expr,j*partSize+1,PartSize));
+  Result:=j;
+   If Assigned(ProgressProc) then
+    if not(ProgressProc(j,ln,UCRTL_ID_SPLIT)) then exit;
+ End;
+if copy(Expr,ln*partSize+1,PartSize)<>'' then
+ Begin
+  AppendElement(Rslt,copy(Expr,ln*partSize+1,PartSize));
+  inc(ln);
+   If Assigned(ProgressProc) then
+    if not(ProgressProc(ln,ln,UCRTL_ID_SPLIT)) then
+         Begin
+          Result:=Length(Rslt);
+          exit;
+         End;
+ End;
+Result:=ln; 
+End;//SplitToEqParts
+
+
+Function SplitByBrackets(Expr,Bra,Cket:String;Var Rslt:TStrArray;KillBrackets:Boolean=False;casesens:Boolean=true):Integer;
+Var St:Integer;
+    TmpStr:String;
+    Continue:Boolean;
+Begin
+Result:=0;
+SetLength(Rslt,1);
+Continue:=True;
+St:=1;
+While Continue do
+ Begin
+  St:=Instr(Expr,Bra,St,0,casesens);
+  TmpStr:=FindPair(Expr,Bra,Cket,St,casesens);
+  If Length(TmpStr)>0 then
+   Begin
+    If KillBrackets then
+     Begin
+      TmpStr:=Mid(TmpStr,1+Length(bra),Length(TmpStr)-Length(Bra+Cket));
+     End;//If KillBrackets
+    if tmpStr='' then continue:=False; 
+    Rslt[Result]:=TmpStr;
+    Inc(Result);
+    SetLength(Rslt,Result+1);
+    St:=St+Length(TmpStr);
+   End//If Len(TmpStr)>0
+  Else Continue:=False;
+ End;//Wend
+SetLength(Rslt,Result);
+End;//SplitByBrackets
+
+
+Function FindBracket(Expr,Bra,CKet:String;KillBrackets:Boolean=True;Start:Integer=0;casesens:Boolean=true):String;
+Var CP:Integer;
+Begin
+ cp:=instr(expr,bra,1,0,false);
+ if Start>cp then cp:=Start;
+ Result:=FindPair(Expr,Bra,CKet,cp,casesens);
+ if KillBrackets then
+  Begin
+   Result:=Mid(Result,1+Length(bra),Length(Result)-Length(Bra+Cket));
+  End;
+End;//FindBracket
+
+Function FindFirstInnerBracket(Expr,Bra,Cket:String):String;
+var tmp,fin,St:Integer;
+begin
+ fin:=instr(expr,cket);
+ st:=instr(expr,bra);
+ tmp:=instr(expr,bra,st+length(bra));
+ While tmp>0 do
+  Begin
+    if fin<tmp then break
+      else
+       Begin
+        st:=tmp;
+        tmp:=instr(expr,bra,st+length(bra));
+       End;
+  End;
+ result:=substr(expr,st,fin);
+end;//FindFirstInnerBracket
+
+
+Function GetWordByNo(Expr:String;WordNo:Integer;CountFromStart:Boolean=True):String;
+Var SA:TStrArray;
+Begin
+Result:='';
+SplitToWords(Expr,SA);
+if not CountFromStart then WordNo:=High(SA)-WordNo;
+if (WordNo<0) or (WordNo>High(SA)) then exit;
+Result:=SA[WordNo];
+End;//GetWordByNo
+
+Function GetParagraphByNo(Expr:String;ParaNo:Integer;CountFromStart:Boolean=True):String;
+Var SA:TStrArray;
+Begin
+Result:='';
+SplitToParagraphs(Expr,SA);
+if not CountFromStart then ParaNo:=High(SA)-ParaNo;
+if (ParaNo<0) or (ParaNo>High(SA)) then exit;
+Result:=SA[ParaNo];
+End;//GetParagraphByNo
+
+Function GetFirstWord(var Expr:String):String;
+var wdDelimPos:Integer;
+    i:Integer;
+Begin
+ Expr:=TruncateSpaces(Expr,TSpTT_DEL_ANY);
+ wdDelimPos:=MaxInt;
+ i:=instr(Expr,#$09);
+ if i<>0 then wdDelimPos:=U_CRTL.min(wdDelimPos,i);
+ i:=instr(Expr,#$0A);
+ if i<>0 then wdDelimPos:=U_CRTL.min(wdDelimPos,i);
+ i:=instr(Expr,#$0D);
+ if i<>0 then wdDelimPos:=U_CRTL.min(wdDelimPos,i);
+ i:=instr(Expr,#$20);
+ if i<>0 then wdDelimPos:=U_CRTL.min(wdDelimPos,i);
+
+ if wdDelimPos=maxint then
+  Begin
+   Result:=expr;
+   expr:='';
+  End
+ Else
+  Begin
+   Result:=mid(expr,1,wdDelimPos-1);
+   expr:=mid(expr,wdDelimPos,Length(Expr));
+  End;
+End;//GetFirstWord
+
+
+Function GetFirstParagraph(var Expr:String):String;
+var i:Integer;
+Begin
+ i:=instr(Expr,vbcrlf);
+ if i<1 then exit;
+ Result:=mid(expr,1,i-1);
+ expr:=mid(expr,i+2,Length(Expr));
+ if KillSpaces(Result)='' then Result:=GetFirstParagraph(expr);
+End;//GetFirstParagraph
+
+
+Procedure VerticalSplit(Expr:String;var Part1,Part2:String;Splitpos:Integer);
+var SA:TStrArray;
+    j:Integer;
+Begin
+SplitToParagraphs(Expr,SA);
+part1:='';
+part2:='';
+for j:=0 to high(SA)-1 do
+ Begin
+  part1:=part1+SubStr(SA[j],1,Splitpos)+vbcrlf;
+  part2:=part2+SubStr(SA[j],Splitpos+1,length(SA[j]))+vbcrlf;
+ End;
+if high(SA)<0 then exit;
+  part1:=part1+SubStr(SA[high(SA)],1,Splitpos);
+  part2:=part2+SubStr(SA[high(SA)],Splitpos+1,length(SA[high(SA)]));
+End;//VerticalSplit
+
+Procedure VerticalSplit(Expr:String;var Part1,Part2:String;Delim:String;LoseDelimiter:Boolean=True);
+var SA:TStrArray;
+    j:Integer;
+    SplitPos:Integer;
+Begin
+SplitToParagraphs(Expr,SA);
+part1:='';
+part2:='';
+for j:=0 to high(SA)-1 do
+ Begin
+  SplitPos:=instr(SA[j],delim);
+  if SplitPos=0 then
+   Begin
+    part1:=part1+SA[j]+vbcrlf;
+    part2:=part2+vbcrlf;
+   End
+  Else
+   Begin
+    if LoseDelimiter then
+     Begin
+      part1:=part1+SubStr(SA[j],1,Splitpos-1)+vbcrlf;
+      part2:=part2+SubStr(SA[j],Splitpos+length(Delim),Length(SA[j]))+vbcrlf;
+     End//loseDelim
+    Else
+     Begin
+      part1:=part1+SubStr(SA[j],1,Splitpos+Length(Delim)-1)+vbcrlf;
+      part2:=part2+SubStr(SA[j],Splitpos+length(Delim),Length(SA[j]))+vbcrlf;
+     End;//!LoseDelim
+   End;//Splitter exists
+ End;
+if high(SA)<0 then exit;
+j:=high(SA);
+  SplitPos:=instr(SA[j],delim);
+  if SplitPos=0 then
+   Begin
+    part1:=part1+SA[j];
+   End
+  Else
+   Begin
+    if LoseDelimiter then
+     Begin
+      part1:=part1+SubStr(SA[j],1,Splitpos-1);
+      part2:=part2+SubStr(SA[j],Splitpos+length(Delim),Length(SA[j]));
+     End//loseDelim
+    Else
+     Begin
+      part1:=part1+SubStr(SA[j],1,Splitpos+Length(Delim)-1);
+      part2:=part2+SubStr(SA[j],Splitpos+length(Delim),Length(SA[j]));
+     End;//!LoseDelim
+   End;//Splitter exists
+End;//VerticalSplit

@@ -1,0 +1,147 @@
+Function FileToByteArray(FileName:String;var BA:TByteArray):Integer;
+Var F:File of Byte;
+Begin
+Result:=0;
+If FileExists(FileName) then
+ Begin
+  AssignFile(F,FileName);
+  Reset(F);
+  Result:=FileSize(F);
+  SetLength(BA,Result);
+  BlockRead(F,BA[0],Result);
+  CloseFile(F);
+ End;//If
+End;//FileToByteArray
+
+
+Function FileToChArray(FileName:String;var BA:TChArray):Integer;
+Var F:File of Byte;
+Begin
+Result:=0;
+If FileExists(FileName) then
+ Begin
+  AssignFile(F,FileName);
+  Reset(F);
+  Result:=FileSize(F);
+  SetLength(BA,Result);
+  BlockRead(F,BA[0],Result);
+  CloseFile(F);
+ End;//If
+End;//FileToByteArray
+
+Procedure ByteArrayToFile(var BA:TByteArray;FileName:String;Overwrite:Boolean=False;ConfirmIfExists:Boolean=False);
+var F:File of Byte;
+    CanWrite:Boolean;
+Begin
+CanWrite:=True;
+If (Fileexists(Filename) and (not Overwrite or ConfirmIfExists))
+   then if ConfirmIfExists
+           then CanWrite:=
+                 Confirm(
+                  FormatExpr(StrFileExistsConfirmation,FileName),'',not Overwrite)
+           else CanWrite:=False;
+if CanWrite then
+ Begin
+  AssignFile(F,FileName);
+  rewrite(F);
+  BlockWrite(F,BA[0],Length(BA));
+  Closefile(F);
+ End;//if
+End;//ByteArrayToFile
+
+Procedure StringToByteArray(S:String;Var BA:TByteArray);
+var j:integer;
+Begin
+SetLength(BA,Length(S));
+for j:=0 to high(BA) do ba[j]:=ord(S[j+1]);
+End;
+
+
+
+Function ByteArrayToStr(var BA:TByteArray;FillNullChars:Char=#32;ProgressProc:TProgressProc=nil):String;
+Var j,L:Integer;
+Begin
+L:=Length(BA);
+SetLength(Result,L);
+For j:=0 to L-1 do
+ Begin
+  If Assigned(ProgressProc) then
+   if not(ProgressProc(j,L-1,UCRTL_ID_BYTEARRAYTOSTR)) then exit;
+  if BA[j]=0 then Result[j+1]:=FillNullChars
+             else Result[j+1]:=Chr(BA[j]);
+ End;
+End;//ByteArrayToStr
+
+
+
+Procedure XORByteArray(Var BA:TByteArray;Key:Byte);
+var j:Integer;
+    HBA:Integer;
+Begin
+HBA:=high(BA);
+if HBA<1 then exit;
+dec(HBA);
+For j:=0 to HBA do
+ Begin
+  BA[j]:=BA[j] xor BA[j+1];
+ End;
+BA[HBA+1]:=BA[HBA+1] xor Key;
+End;//XORByteArray
+
+Procedure UnXORByteArray(Var BA:TByteArray;Key:Byte);
+var j:Integer;
+    HBA:Integer;
+Begin
+HBA:=high(BA);
+if HBA<1 then exit;
+Dec(HBA);
+BA[HBA+1]:=BA[HBA+1] xor Key;
+For j:=HBA downTo 0 do
+ Begin
+  BA[j]:=BA[j] xor BA[j+1];
+ End;
+End;
+
+Procedure XORByteArray(Var BA:TByteArray;Key:String);
+Var j:Integer;
+Begin
+ For j:=1 to length(Key) do XORByteArray(BA,Ord(Key[j]));
+End;
+
+Procedure UnXORByteArray(Var BA:TByteArray;Key:String);
+Var j:Integer;
+Begin
+ For j:=length(Key) downto 1 do UnXORByteArray(BA,Ord(Key[j]));
+End;
+
+
+Procedure StatBA(var BA:TByteArray;var StatArr:TIntArray);
+Var j:Integer;
+Begin
+ SetLength(StatArr,256);
+ For j:=0 to 255 do StatArr[j]:=0;
+ For j:=0 to High(BA) do inc(StatArr[BA[j]]);
+End;//StatBA
+
+Function Bin2Hex;
+var bs:String;
+    SA:TStrArray;
+    j:Integer;
+ Function b2h(b:String):String;
+ var n,j:byte;
+  Begin
+   b:=StrReverse(b);
+   n:=0;
+   for j:=1 to 8 do if b[j]='1' then n:=n or 1 shl (j-1);//SetBits(n,j,);
+   Result:=Int2Hex(n,2);
+  End;
+Begin
+ Result:='';
+ if ShiftEnd then  bs:=bin+Stringofchar('0',(8-length(bin) mod 8) mod 8)
+ 	     else  bs:=Stringofchar('0',(8-length(bin) mod 8) mod 8)+bin;
+ SplitToEqParts(bs,8,sa);
+ For j:=0 to high(SA) do SA[j]:=b2h(sa[j]);
+ Result:=join(sa,Delim);
+End;//Bin2Hex
+
+

@@ -1,0 +1,12 @@
+Procedure InitCrtl;
+Var S2:String;
+Begin
+If UCase(ParamStr(1))='/CMD' then
+ Begin
+  S2:=ParamStr(2);
+  replace(S2,'/','');
+  if UCase(S2)='STARTUP'   then SetAutoRunInfo(True);
+  if UCase(S2)='UNSTARTUP' then SetAutoRunInfo(False);
+  if UCase(S2)='SCRIPT'    then PlayScriptFile(ParamStr(3));
+ End;
+End;

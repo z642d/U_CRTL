@@ -1,0 +1,7 @@
+Const
+  SHFolderDll = 'SHFolder.dll';
+
+function SHGetFolderPath; external SHFolderDll name 'SHGetFolderPathA';
+function SHGetFolderPathA; external SHFolderDll name 'SHGetFolderPathA';
+function SHGetFolderPathW; external SHFolderDll name 'SHGetFolderPathW';
+

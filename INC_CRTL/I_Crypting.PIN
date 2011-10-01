@@ -1,0 +1,277 @@
+Function XorDecryptString(S:String;Key:String):String;
+Var I,J,ls,lk:Integer;
+Begin
+lk:=Length(key);
+ls:=Length(S);
+Result:=S;
+if ls=0 then exit;
+For i:=lk downto 1 do
+ Begin
+  Result[ls]:=Chr(ord(Result[ls]) xor ord(key[i]));
+  For j:=ls-1 downto 1 do Result[j]:=Chr(Ord(Result[j]) xor Ord(Result[j+1]));
+ End;
+//Result:=S;
+End;
+
+Function XorCryptString(S:String;Key:String):String;
+Var i,j,lk,ls:Integer;
+Begin
+lk:=Length(key);
+ls:=Length(S);
+Result:=S;
+if ls=0 then exit;
+for i:=1 to lk do
+ Begin
+  For j:=1 to ls-1 do Result[j]:=Chr(Ord(Result[j]) xor Ord(Result[j+1]));
+  Result[ls]:=Chr(ord(Result[ls]) xor ord(key[i]));
+ End;
+End;
+
+
+Function CryptString(Const Expr:String;Const Key:String):String;
+Var RsltKey,XorStr:String;
+    j:Integer;
+    StrOfHiTetrade:String;
+    S:String;
+Begin
+ Result:='';
+ if Expr='' then exit;
+ S:=Expr;
+ Randomize;
+ RsltKey:='';
+ For j:=1 to Length(S) div 4 do
+  Begin
+   RsltKey:=RsltKey+Chr(Round(Random(256)));
+  End;
+ //Генерация дополнительной части ключа
+
+ StrOfHiTetrade:='';
+ For j:=1 to Length(RsltKey) do
+  Begin
+   StrOfHiTetrade:=StrOfHiTetrade+IntToBit(Ord(RsltKey[j]));
+  End;
+ Replace(StrOfHiTetrade,'1','6');
+ Replace(StrOfHiTetrade,'0','4');
+ For j:=1 to (Length(S) mod 4)*2  do
+   if Random(256)>127
+     then StrOfHiTetrade:=StrOfHiTetrade+'6'
+     else StrOfHiTetrade:=StrOfHiTetrade+'4';
+ XorStr:=XorCryptString(S,RsltKey+Key);
+ Result:='';
+ For j:=1 to length(XorStr) do
+  Begin
+   Result:=Result+
+    Chr(((Str2Int(StrOfHiTetrade[j*2-1]) shl 4)  or (Ord(XorStr[j]) div 16))+1)+
+    Chr(((Str2Int(StrOfHiTetrade[j*2])   shl 4)  or (Ord(XorStr[j]) mod 16))+1);
+  End;
+End;
+
+Function DeCryptString(Const Expr:String;Const Key:String):String;
+Var j:Integer;
+    CryptedStr,XorStr,StrOfHiTetrade,RsltKey:String;
+Begin
+ XorStr:=Expr;
+ for j:=1 to length(XorStr) do XorStr[j]:=Chr(ord(XorStr[j])-1);
+ StrOfHiTetrade:='';
+ For j:=1 to (Length(XorStr) div 8)*8 do
+  Begin
+   StrOfHiTetrade:=StrOfHiTetrade+Int2Str(Ord(XorStr[j]) shr 4);
+  End;
+ Replace(StrOfHiTetrade,'6','1');
+ Replace(StrOfHiTetrade,'4','0');
+ StrOfHiTetrade:=Bin2Hex(StrOfHiTetrade,'');
+ RsltKey:='';
+ For j:=1 to length(StrOfHiTetrade) div 2 do
+  RsltKey:=RsltKey+Chr(Str2Int('$'+StrOfHiTetrade[j*2-1]+StrOfHiTetrade[j*2]));
+ CryptedStr:='';
+ For j:=1 to Length(XorStr) div 2 do
+  CryptedStr:=CryptedStr+chr(((ord(XorStr[j*2-1]) mod 16) shl 4) or (ord(XorStr[j*2]) mod 16));
+ Result:=XorDecryptString(CryptedStr,RsltKey+key);
+  CryptedStr:=StringToHexString(CryptedStr);
+  CryptedStr:='';
+End;
+
+
+
+Function GetCRC16(S:String):Word;
+var j,i:Integer;
+Const POLYNOMIAL=$8408;
+Begin
+Result:=0;
+For j:=1 to length(S) do
+ Begin
+  Result:=Result Xor ord(S[j]);
+  for i:=0 to 7 do
+   Begin
+    if (Result and WORD($1))<>0
+     then Result:=(Result shr 1) xor POLYNOMIAL
+    Else Result:=(Result shr 1)
+   End;
+ End;
+End;
+
+Function AppendCRC16(S:String):String;
+Var CRC:TCoolType;
+Begin
+ CRC.Words[0]:=GetCRC16(S);
+ Result:=S+CRC.Ch[0]+CRC.Ch[1]
+End;
+
+Function ValidateCRC16(S:String):Boolean;
+var CRC:TCoolType;
+Begin
+Result:=False;
+if length(S)<2 then exit;
+CRC.CWords[1].Ch[0]:=(S[Length(S)-1]);
+CRC.CWords[1].Ch[1]:=(S[Length(S)]);
+CRC.Words[0]:=GetCRC16(Substr(S,1,Length(S)-2));
+Result:=CRC.Words[0]=CRC.Words[1];
+End;
+
+
+Function AppendMD5Hash(S:String;Salt:String=''):String;
+Begin
+ Result:=S+CryptString(md5(S+Salt),'');
+End;//AppendMD5Hash
+
+Function ValidateMD5Hash(S:String;Salt:String=''):Boolean;
+var msg,key:String;
+Begin
+ result:=False;
+ if length(S)<32 then exit;
+ msg:=S;
+ Delete(msg,length(s)-31,32);
+ key:=Mid(S,Length(S)-31,32);
+ key:=DeCryptString(key,'');
+ result:=md5(msg+Salt)=key;
+End;//ValidateMD5Hash
+
+Function AppendGOSTHash(S:String;Salt:String=''):String;
+Begin
+ Result:=S+CryptString(GOST(S+Salt),'');
+End;
+
+Function ValidateGOSTHash(S:String;Salt:String=''):Boolean;
+var msg,key:String;
+Begin
+ result:=False;
+ if length(S)<64 then exit;
+ msg:=S;
+ Delete(msg,length(s)-63,64);
+ key:=Mid(S,Length(S)-63,64);
+ key:=DeCryptString(key,'');
+ result:=GOST(msg+Salt)=key;
+End;//ValidateMD5Hash
+
+
+Function GetSignedString(S:String):String;
+//Подпишем строку, НЕ ГАРАНТИРУЕТСЯ ОБРАТНАЯ СОВМЕСТИМОСТЬ!
+var Salt:String;
+Begin
+ Salt:=CryptString(RandomString(18),RandomString(2));
+ //36 bytes
+ Result:=AppendGOSTHash(S,Salt)+Salt;
+End;//SignString
+
+Function ValidateSignedString(S:String):String;
+//Вернёт строку без подписи если валидна или пустую в случае ошибки
+var Salt:String;
+    expr:String;
+Begin
+ Result:='';
+ if length(S)<100 then exit;
+ expr:=S;
+ Salt:=mid(S,Length(S)-35,36);
+ Delete(expr,length(expr)-35,36);
+ if ValidateGOSTHash(Expr,Salt) then Result:=mid(S,1,length(S)-100);
+End;
+
+
+
+
+(********)
+
+VAR
+  CRC32Table : ARRAY[0..255] OF Cardinal;
+
+PROCEDURE BuildCRC32Table; ASSEMBLER;
+ASM
+    mov	ebx, 0EDB88320h
+    lea	edi, crc32table
+    xor	ecx, ecx
+  @loc1:
+    mov	eax, ecx
+    mov	edx, 8
+  @loc2:
+    test eax, 1
+    jz  @loc3
+    shr	eax, 1
+    xor	eax, ebx
+    jmp	@loc4
+  @loc3:
+    shr	eax, 1
+  @loc4:
+    dec	edx
+    jnz	@loc2
+    stosd
+    inc	ecx
+    cmp	ecx, 256
+    jb  @loc1
+END;
+
+FUNCTION CalculateCRC32(Buffer:Pointer;Size:Cardinal) : Cardinal; ASSEMBLER;
+ASM
+    push esi
+    push edi
+    push ebx
+    mov edi,edx
+    mov esi,eax
+    xor ebx,ebx
+    mov eax,$ffffffff
+    mov ecx,edi
+    shr ecx,2
+    jecxz @Rest
+  @Loop:
+    mov edx,[esi]
+    mov bl,al
+    xor bl,dl
+    shr eax,8
+    xor eax,dword ptr [CRC32table+ebx*4]
+    mov bl,al
+    xor bl,dh
+    shr eax,8
+    xor eax,dword ptr [CRC32table+ebx*4]
+    shr edx,16
+    mov bl,al
+    xor bl,dl
+    shr eax,8
+    xor eax,dword ptr [CRC32table+ebx*4]
+    mov bl,al
+    xor bl,dh
+    shr eax,8
+    xor eax,dword ptr [CRC32table+ebx*4]
+    add esi,4
+    loop @Loop
+  @Rest:
+    mov ecx,edi
+    and ecx,3
+    jecxz @End
+  @Loop_Rest:
+    mov bl,al
+    xor bl,[esi]
+    shr eax,8
+    inc esi
+    xor eax,dword ptr [CRC32table+ebx*4]
+    loop @Loop_Rest
+@End:
+    xor eax,$ffffffff
+    pop ebx
+    pop edi
+    pop esi
+END;
+
+FUNCTION CRC32(S:STRING) : Longint;
+BEGIN
+   BuildCRC32Table;
+   Result:=CalculateCRC32(PChar(S),length(S));
+END;

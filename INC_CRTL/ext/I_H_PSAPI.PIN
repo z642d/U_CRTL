@@ -1,0 +1,158 @@
+type
+  PPointer = ^Pointer;
+
+  TEnumProcesses = function (lpidProcess: LPDWORD; cb: DWORD; var cbNeeded: DWORD): BOOL stdcall;
+  TEnumProcessModules = function (hProcess: THandle; lphModule: LPDWORD; cb: DWORD;
+    var lpcbNeeded: DWORD): BOOL stdcall;
+  TGetModuleBaseNameA = function (hProcess: THandle; hModule: HMODULE;
+    lpBaseName: PAnsiChar; nSize: DWORD): DWORD stdcall;
+  TGetModuleBaseNameW = function (hProcess: THandle; hModule: HMODULE;
+    lpBaseName: PWideChar; nSize: DWORD): DWORD stdcall;
+  TGetModuleBaseName = TGetModuleBaseNameA;
+  TGetModuleFileNameExA = function (hProcess: THandle; hModule: HMODULE;
+    lpFilename: PAnsiChar; nSize: DWORD): DWORD stdcall;
+  TGetModuleFileNameExW = function (hProcess: THandle; hModule: HMODULE;
+    lpFilename: PWideChar; nSize: DWORD): DWORD stdcall;
+  TGetModuleFileNameEx = TGetModuleFileNameExA;
+
+  {$EXTERNALSYM _MODULEINFO}
+  _MODULEINFO = packed record
+    lpBaseOfDll: Pointer;
+    SizeOfImage: DWORD;
+    EntryPoint: Pointer;
+  end;
+  {$EXTERNALSYM MODULEINFO}
+  MODULEINFO = _MODULEINFO;
+  {$EXTERNALSYM LPMODULEINFO}
+  LPMODULEINFO = ^_MODULEINFO;
+  TModuleInfo = _MODULEINFO;
+  PModuleInfo = LPMODULEINFO;
+
+  TGetModuleInformation = function (hProcess: THandle; hModule: HMODULE;
+    lpmodinfo: LPMODULEINFO; cb: DWORD): BOOL stdcall;
+  TEmptyWorkingSet = function (hProcess: THandle): BOOL stdcall;
+  TQueryWorkingSet = function (hProcess: THandle; pv: Pointer; cb: DWORD): BOOL stdcall;
+  TInitializeProcessForWsWatch = function (hProcess: THandle): BOOL stdcall;
+
+  {$EXTERNALSYM _PSAPI_WS_WATCH_INFORMATION}
+  _PSAPI_WS_WATCH_INFORMATION = packed record
+    FaultingPc: Pointer;
+    FaultingVa: Pointer;
+  end;
+  {$EXTERNALSYM PSAPI_WS_WATCH_INFORMATION}
+  PSAPI_WS_WATCH_INFORMATION = _PSAPI_WS_WATCH_INFORMATION;
+  {$EXTERNALSYM PPSAPI_WS_WATCH_INFORMATION}
+  PPSAPI_WS_WATCH_INFORMATION = ^_PSAPI_WS_WATCH_INFORMATION;
+  TPSAPIWsWatchInformation = _PSAPI_WS_WATCH_INFORMATION;
+  PPSAPIWsWatchInformation = PPSAPI_WS_WATCH_INFORMATION;
+
+  TGetWsChanges = function (hProcess: THandle; lpWatchInfo: PPSAPI_WS_WATCH_INFORMATION;
+    cb: DWORD): BOOL stdcall;
+
+  TGetMappedFileNameA = function (hProcess: THandle; lpv: Pointer;
+    lpFilename: PAnsiChar; nSize: DWORD): DWORD stdcall;
+  TGetMappedFileNameW = function (hProcess: THandle; lpv: Pointer;
+    lpFilename: PWideChar; nSize: DWORD): DWORD stdcall;
+  TGetMappedFileName = TGetMappedFileNameA;
+  TGetDeviceDriverBaseNameA = function (ImageBase: Pointer; lpBaseName: PAnsiChar;
+    nSize: DWORD): DWORD stdcall;
+  TGetDeviceDriverBaseNameW = function (ImageBase: Pointer; lpBaseName: PWideChar;
+    nSize: DWORD): DWORD stdcall;
+  TGetDeviceDriverBaseName = TGetDeviceDriverBaseNameA;
+  TGetDeviceDriverFileNameA = function (ImageBase: Pointer; lpFileName: PAnsiChar;
+    nSize: DWORD): DWORD stdcall;
+  TGetDeviceDriverFileNameW = function (ImageBase: Pointer; lpFileName: PWideChar;
+    nSize: DWORD): DWORD stdcall;
+  TGetDeviceDriverFileName = TGetDeviceDriverFileNameA;
+
+  TEnumDeviceDrivers = function (lpImageBase: PPointer; cb: DWORD;
+    var lpcbNeeded: DWORD): BOOL stdcall;
+
+  {$EXTERNALSYM _PROCESS_MEMORY_COUNTERS}
+  _PROCESS_MEMORY_COUNTERS = packed record
+    cb: DWORD;
+    PageFaultCount: DWORD;
+    PeakWorkingSetSize: DWORD;
+    WorkingSetSize: DWORD;
+    QuotaPeakPagedPoolUsage: DWORD;
+    QuotaPagedPoolUsage: DWORD;
+    QuotaPeakNonPagedPoolUsage: DWORD;
+    QuotaNonPagedPoolUsage: DWORD;
+    PagefileUsage: DWORD;
+    PeakPagefileUsage: DWORD;
+  end;
+  {$EXTERNALSYM PROCESS_MEMORY_COUNTERS}
+  PROCESS_MEMORY_COUNTERS = _PROCESS_MEMORY_COUNTERS;
+  {$EXTERNALSYM PPROCESS_MEMORY_COUNTERS}
+  PPROCESS_MEMORY_COUNTERS = ^_PROCESS_MEMORY_COUNTERS;
+  TProcessMemoryCounters = _PROCESS_MEMORY_COUNTERS;
+  PProcessMemoryCounters = ^_PROCESS_MEMORY_COUNTERS;
+
+  TGetProcessMemoryInfo = function (Process: THandle;
+    ppsmemCounters: PPROCESS_MEMORY_COUNTERS; cb: DWORD): BOOL stdcall;
+
+{$EXTERNALSYM EnumProcesses}
+function EnumProcesses(lpidProcess: LPDWORD; cb: DWORD; var cbNeeded: DWORD): BOOL;
+{$EXTERNALSYM EnumProcessModules}
+function EnumProcessModules(hProcess: THandle; lphModule: LPDWORD; cb: DWORD;
+  var lpcbNeeded: DWORD): BOOL;
+{$EXTERNALSYM GetModuleBaseName}
+function GetModuleBaseName(hProcess: THandle; hModule: HMODULE;
+  lpBaseName: PChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetModuleBaseNameA}
+function GetModuleBaseNameA(hProcess: THandle; hModule: HMODULE;
+  lpBaseName: PAnsiChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetModuleBaseNameW}
+function GetModuleBaseNameW(hProcess: THandle; hModule: HMODULE;
+  lpBaseName: PWideChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetModuleFileNameEx}
+function GetModuleFileNameEx(hProcess: THandle; hModule: HMODULE;
+  lpFilename: PChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetModuleFileNameExA}
+function GetModuleFileNameExA(hProcess: THandle; hModule: HMODULE;
+  lpFilename: PAnsiChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetModuleFileNameExW}
+function GetModuleFileNameExW(hProcess: THandle; hModule: HMODULE;
+  lpFilename: PWideChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetModuleInformation}
+function GetModuleInformation(hProcess: THandle; hModule: HMODULE;
+  lpmodinfo: LPMODULEINFO; cb: DWORD): BOOL;
+{$EXTERNALSYM EmptyWorkingSet}
+function EmptyWorkingSet(hProcess: THandle): BOOL;
+{$EXTERNALSYM QueryWorkingSet}
+function QueryWorkingSet(hProcess: THandle; pv: Pointer; cb: DWORD): BOOL;
+{$EXTERNALSYM InitializeProcessForWsWatch}
+function InitializeProcessForWsWatch(hProcess: THandle): BOOL;
+{$EXTERNALSYM GetMappedFileName}
+function GetMappedFileName(hProcess: THandle; lpv: Pointer;
+  lpFilename: PChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetMappedFileNameA}
+function GetMappedFileNameA(hProcess: THandle; lpv: Pointer;
+  lpFilename: PAnsiChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetMappedFileNameW}
+function GetMappedFileNameW(hProcess: THandle; lpv: Pointer;
+  lpFilename: PWideChar; nSize: DWORD): DWORD;
+{$EXTERNALSYM GetDeviceDriverBaseName}
+function GetDeviceDriverBaseName(ImageBase: Pointer; lpBaseName: PChar;
+  nSize: DWORD): DWORD;
+{$EXTERNALSYM GetDeviceDriverBaseNameA}
+function GetDeviceDriverBaseNameA(ImageBase: Pointer; lpBaseName: PAnsiChar;
+  nSize: DWORD): DWORD;
+{$EXTERNALSYM GetDeviceDriverBaseNameW}
+function GetDeviceDriverBaseNameW(ImageBase: Pointer; lpBaseName: PWideChar;
+  nSize: DWORD): DWORD;
+{$EXTERNALSYM GetDeviceDriverFileName}
+function GetDeviceDriverFileName(ImageBase: Pointer; lpFileName: PChar;
+  nSize: DWORD): DWORD;
+{$EXTERNALSYM GetDeviceDriverFileNameA}
+function GetDeviceDriverFileNameA(ImageBase: Pointer; lpFileName: PAnsiChar;
+  nSize: DWORD): DWORD;
+{$EXTERNALSYM GetDeviceDriverFileNameW}
+function GetDeviceDriverFileNameW(ImageBase: Pointer; lpFileName: PWideChar;
+  nSize: DWORD): DWORD;
+{$EXTERNALSYM EnumDeviceDrivers}
+function EnumDeviceDrivers(lpImageBase: PPointer; cb: DWORD;
+  var lpcbNeeded: DWORD): BOOL;
+{$EXTERNALSYM GetProcessMemoryInfo}
+function GetProcessMemoryInfo(Process: THandle;
+  ppsmemCounters: PPROCESS_MEMORY_COUNTERS; cb: DWORD): BOOL;

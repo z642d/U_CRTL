@@ -1,0 +1,153 @@
+function IsNT: bool; 
+var
+  OSVersionInfo: TOSVersionInfo;
+begin
+OSVersionInfo.dwOSVersionInfoSize := SizeOf(OSVersionInfo);
+GetVersionEx(OSVersionInfo);
+Result:= OSVersionInfo.dwPlatformId = VER_PLATFORM_WIN32_NT;
+end;
+
+
+Procedure Delay(ms:cardinal;ProgressProc:TProgressProc=nil);
+Var gtc:cardinal;
+Begin
+gtc:=GetTickCount;
+While (gtc+ms)>GetTickCount do
+ If Assigned(ProgressProc) then
+  If not(ProgressProc(GetTickCount-gtc,ms,UCRTL_ID_DELAY)) then exit;
+End;//Delay
+
+Procedure SetAutoRunInfo(ToSet:Boolean;Name:String='';ToLM:Boolean=False);
+var Hk:HKey;
+Begin
+If Name='' then Name:=ProcessPath(ParamStr(0),PPPT_FILENAME); 
+If ToLM then RegCreateKey(HKEY_LOCAL_MACHINE,'SOFTWARE\Microsoft\Windows\CurrentVersion\Run',Hk)
+	else RegCreateKey(HKEY_CURRENT_USER,'SOFTWARE\Microsoft\Windows\CurrentVersion\Run',Hk);
+if ToSet then RegSetValueEx(Hk,PChar(Name),0,REG_SZ,PChar(ParamStr(0)),Length(ParamStr(0)))
+	 Else RegDeleteValue(Hk,PChar(Name));
+RegFlushKey(Hk);
+End;//SetAutoRunInfo
+
+
+Function IIF(condition:Boolean;iftrue:String;iffalse:String):String;Begin if condition then result:=iftrue else result:=iffalse;End;
+Function IIF(condition:Boolean;iftrue:Integer;iffalse:Integer):integer;Begin if condition then result:=iftrue else result:=iffalse;End;
+Function IIF(condition:Boolean;iftrue:Double;iffalse:Double):Double;Begin if condition then result:=iftrue else result:=iffalse;End;
+
+procedure nop;
+asm
+  nop;
+end;
+
+function AllocMem(Size: Cardinal): Pointer;
+begin
+  GetMem(Result, Size);
+  FillChar(Result^, Size, 0);
+end;
+
+
+Function GetResource(resname:String;ressect:PAnsiChar=RT_RCDATA):String;
+var
+     findres:HRSRC;
+     hResource: THandle;
+     pData: Pointer;
+     sz:INteger;
+     p:PChar;
+label fin;
+begin
+Result:='';
+findres:=FindResource(hInstance, PChar(resname), ressect);
+if findres=0 then exit;
+ hResource:=LoadResource( hInstance, findres);
+  if hResource=0 then exit;
+  pData := LockResource(hResource);
+  sz:=SizeofResource(HInstance,findres);
+   if pData = nil then goto fin;
+   p:=AllocMem(sz);
+   CopyMemory(p,pData,sz);
+   Result:=PtrToStr(p,sz);
+   FreeMem(p,sz);
+fin:
+  FreeResource(hResource);
+end;//GetResource
+
+
+
+Function NTreboot(EWXuFlags:Cardinal):Boolean;
+var
+  hToken: THandle;
+  tkp: _TOKEN_PRIVILEGES;
+//  DUMMY: TTokenPrivileges;
+  DummyRL: Cardinal;
+begin
+Result:=False;
+//  DUMMY := nil;
+  if not OpenProcessToken(
+    GetCurrentProcess(),
+    TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY,
+    hToken
+    ) then exit;
+
+  if (not LookupPrivilegeValue(nil, 'SeShutdownPrivilege',
+    tkp.Privileges[0].Luid)) then exit;
+//    raise TShutdownEx.Create('LookupPrivilegeValue failed');
+
+  tkp.PrivilegeCount := 1;
+  tkp.Privileges[0].Attributes := $0002; //SE_PRIVILEGE_ENABLED = $00002
+
+  Windows.AdjustTokenPrivileges(hToken, FALSE, tkp, 0, nil, DummyRL);
+
+  if (GetLastError() <> ERROR_SUCCESS) then exit;
+  if (not ExitWindowsEx(EWXuFlags, 0)) then exit;
+result:=true;
+end;//NTreboot
+
+Function String42Integer(S:String):Integer;
+begin
+result:=-1;
+ if length(S)=4 then
+  begin
+   Result:=(ord(S[1]))+
+           (ord(S[2]) shl 8)+
+           (ord(S[3]) shl 16)+
+           (ord(S[4]) shl 24);           
+  end;//if
+end;//String42Integer
+
+Function Integer2String4(j:Integer):String;
+Begin
+ Result:=chr(j mod $100)+
+         chr((j shr 8) mod $100)+
+         chr((j shr 16) mod $100)+
+         chr((j shr 24) mod $100);
+End;//Integer2String4
+
+Function String82Int64(S:String):Int64;
+var i1,i2:int64;
+begin
+ if length(S)=8 then
+  begin
+   i1:=(ord(S[1]))+
+           (ord(S[2]) shl 8)+
+           (ord(S[3]) shl 16)+
+           (ord(S[4]) shl 24);
+   i2:=(ord(S[5]))+
+           (ord(S[6]) shl 8)+
+           (ord(S[7]) shl 16)+
+           (ord(S[8]) shl 24);
+   Result:=i1+i2*65536*65536;
+  end//if
+ else result:=-1;
+end;//String82Integer64
+
+Function Int642String8(j:Int64):String;
+begin
+ Result:=chr(j mod $100)+
+         chr((j shr 8) mod $100)+
+         chr((j shr 16) mod $100)+
+         chr((j shr 24) mod $100)+
+         chr((j shr 32) mod $100)+
+         chr((j shr 40) mod $100)+
+         chr((j shr 48) mod $100)+
+         chr((j shr 54) mod $100);
+end;//Int642String8
+

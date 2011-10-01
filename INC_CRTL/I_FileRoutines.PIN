@@ -1,0 +1,647 @@
+Function IsWildCardInPath(Path:String):Boolean;
+Begin
+ Result:=(InStr(Path,'?')>0) or (InStr(Path,'*')>0);
+End;
+
+Function FileExists(Path:String):Boolean;
+Var FSR:WIN32_FIND_DATA;
+    hFindFile:THandle;
+Begin
+Result:=False;
+Path:=TruncateSpaces(Path,TSpTT_DEL_BOTH);
+If Length(Path)=0 then exit;
+if Path[Length(Path)]='\' then delete(Path,Length(Path),1);
+hFindFile:=FindFirstFile(PChar(Path),FSR);
+Result:=not(hFindFile=INVALID_HANDLE_VALUE)
+        and not(IsBitsSet(FSR.dwFileAttributes,FILE_ATTRIBUTE_DIRECTORY));
+FindClose(hFindFile);
+Result:=Result and not(IsWildCardInPath(Path));
+End;//FileExists
+
+Function FolderExists(Path:String):Boolean;
+Var FSR:WIN32_FIND_DATA;
+    hFindFile:Cardinal;
+Begin
+Result:=False;
+Path:=TruncateSpaces(Path,TSpTT_DEL_BOTH);
+If Length(Path)=0 then exit;
+if Path[Length(Path)]='\' then delete(Path,Length(Path),1);
+hFindFile:=FindFirstFile(PChar(Path),FSR);
+Result:=not(hFindFile=INVALID_HANDLE_VALUE)
+        and (IsBitsSet(FSR.dwFileAttributes,FILE_ATTRIBUTE_DIRECTORY));
+FindClose(hFindFile);
+Result:=Result and not(IsWildCardInPath(Path));
+End;//FolderExists
+
+Function mkdir(Path:String):Boolean;
+Begin
+result:=CreateDirectory(PChar(Path),nil);
+End;
+
+Function SMkDir(path:String):Integer;
+var
+ S:STring;
+Begin
+ mkdir(path);
+ Result:=GetLastError;
+ if Result=ERROR_PATH_NOT_FOUND then
+  Begin
+   S:=ProcessPath(path,PPPT_PARENTDIR);
+   if length(S)>3 then
+    SMkDir(S);
+    result:=smkdir(path);
+  End;
+ if FolderExists(path) then result:=ERROR_SUCCESS;
+End;//smkdir
+
+
+Function del(Path:String):Boolean;
+Begin
+SetFileAttributes(PChar(Path),0);
+if FolderExists(Path)
+ then Result:=RemoveDirectory(PChar(Path))
+ else Result:=DeleteFile(PChar(Path));
+End;
+
+Function CopyMove(Src,Dest:String;Move:Boolean;OverWrite:Boolean=True):Boolean;
+Begin
+Result:=CopyFile(PChar(Src),PChar(Dest),not OverWrite);
+If Move  then
+ if result then Del(Src);
+End;
+
+
+Function FileToString(FileName:String;FillNullChars:Char=#0):String;
+Var F:File of Char;
+    Fsz,j:Integer;
+    FM:Integer;
+Begin
+Result:='';
+If FileExists(FileName) then
+ Begin
+  {$i-}
+  FM:=FileMode;
+  Filemode:=$0040;
+  AssignFile(F,FileName);
+  Reset(F);
+  Fsz:=FileSize(F);
+  SetString(Result,Nil,Fsz);
+  BlockRead(F,Result[1],FSz);
+  CloseFile(F);
+  FileMode:=FM;
+   if FillNullChars=#0 then exit;
+   For j:=1 to Length(Result) do
+       if Result[j]=#0
+          then Result[j]:=FillNullChars;
+  {$i+}
+ End;//If
+End;//FileToString
+
+
+Function StringToFile(S:String;FileName:String;Overwrite:Boolean=False;ConfirmIfExists:Boolean=False):Boolean;
+var F:TextFile;
+    CanWrite:Boolean;
+Begin
+{$i-}
+Result:=False;
+CanWrite:=True;
+If (Fileexists(Filename) and (not Overwrite or ConfirmIfExists))
+   then if ConfirmIfExists
+           then CanWrite:=
+                 Confirm(
+                  FormatExpr(StrFileExistsConfirmation,FileName),'',not Overwrite)
+           else CanWrite:=False;
+if CanWrite then
+ Begin
+  AssignFile(F,FileName);
+  rewrite(F);
+  Write(F,S);
+  Closefile(F);
+  Result:=IOResult=0;
+ End;//if
+{$i+}
+End;//StringToFile
+
+Procedure StrArrayToFile(Var SA:TStrArray;FileName:String;Delimiter:String='';Overwrite:Boolean=False;ConfirmIfExists:Boolean=False);
+var F:TextFile;
+    CanWrite:Boolean;
+    j:Integer;
+Begin
+if length(SA)=0 then exit;
+CanWrite:=True;
+If (Fileexists(Filename) and (not Overwrite or ConfirmIfExists))
+   then if ConfirmIfExists
+           then CanWrite:=
+                 Confirm(
+                  FormatExpr(StrFileExistsConfirmation,FileName),'',not Overwrite)
+           else CanWrite:=False;
+if CanWrite then
+  Begin
+   AssignFile(F,FileName);
+   rewrite(F);
+   Write(F,SA[0]);
+   Write(F,Delimiter);
+   For j:=1 to High(SA)-1 do
+    Begin
+     Write(F,SA[j]);
+     Write(F,Delimiter);
+    End;
+    Write(F,SA[High(SA)]);
+   Closefile(F);
+  End;
+End;//StrArrayToFile
+
+
+
+Function IsFileName(TestFN:String):Boolean;
+Begin
+Result:=False;
+if TestFN='' then exit;
+if instr(TestFN,'*')=0 then
+ if instr(TestFN,'?')=0 then
+  if instr(TestFN,'|')=0 then
+   if instr(TestFN,'>')=0 then
+    if instr(TestFN,'<')=0 then
+     if instr(TestFN,'/')=0 then
+      if instrCount(TestFN,':')<2 then
+       Result:=True;
+End;//IsFileName
+
+Function ProcessPath(Path:String;ProcessType:Byte):String;
+var s:String;
+    j:Integer;
+Begin
+Path:=TruncateSpaces(Path,TSpTT_DEL_BOTH);
+If Mid(Path,Length(Path))='\' then delete(Path,Length(Path),1);
+ Case ProcessType mod PPPT_FORCEBACKSLASH of
+  PPPT_FILENAME_FILEEXT:
+   Begin
+    S:=StrReverse(Path);
+    j:=instr(S,'\')-1;
+    if j=-1 then j:=Length(S);
+    Result:=StrReverse(Mid(S,1,j));
+   End;
+  PPPT_FILENAME        :
+   Begin
+    S:=ProcessPath(Path,PPPT_FILENAME_FILEEXT);
+    j:=instr(S,'.')-1;
+    if j=-1 then j:=Length(S);
+    Result:=Mid(S,1,j);
+   End;
+  PPPT_FILEEXT         :
+   Begin
+    S:=StrReverse(Path);
+    j:=InStr(S,'.')-1;
+    Result:=StrReverse(Mid(S,1,j));
+   End;
+  PPPT_PARENTDIR       :
+   Begin
+    S:=StrReverse(Path);
+    j:=instr(S,'\')+1;
+    if j=1 then result:='' else Result:=StrReverse(Mid(S,j,length(S)));
+   End;
+  PPPT_DELALLEXT       :
+   Begin
+    S:=Path;
+    j:=instr(S,'.')-1;
+    if j=-1 then j:=Length(S);
+    Result:=Mid(S,1,j);
+   End;
+  PPPT_DELLASTEXT      :
+   Begin
+    S:=StrReverse(Path);
+    j:=InStr(S,'.')+1;
+    Result:=StrReverse(Substr(S,j,Length(S)));
+   End;
+  PPPT_DELFIRSTFOLDER:
+   Begin
+    j:=InStr(Path,'\')+1;
+    Result:=mid(Path,j,Length(Path));
+   End;
+ End;//Select
+If Result='.'then Result:='';
+If Result='' then exit;
+If IsBitsSet(ProcessType,PPPT_FORCEBACKSLASH)
+   then if Result[Length(Result)]<>'\' then Result:=Result+'\'
+   Else if Result[Length(Result)]='\' then Delete(Result,Length(Result),1);
+End;//ProcessPath
+
+function GetCurDir:string;
+var Buffer: array[0..MAX_PATH - 1] of Char;
+begin
+  SetString(Result, Buffer, GetCurrentDirectory(SizeOf(Buffer), Buffer));
+end;
+
+function SetCurDir(const Dir: string): Boolean;
+begin
+  Result := SetCurrentDirectory(PChar(Dir));
+end;
+
+
+Function TruncPath(Path:String;NeedLength:Integer;TruncType:Byte=0):String;
+Begin
+if Length(Path)<=NeedLength then begin Result:=Path; exit; end;
+case TruncType of
+0:
+  Result:=MidEx(Path,1,NeedLength div 2,MIDEX_DIFF_END,'\','\')
+        +'...'+
+        MidEx(Path,Length(Path)-(NeedLength div 2),Length(Path),
+        MIDEX_DIFF_START or MIDEX_LENGTH_AS_NUMBER
+        ,'\','\');
+1: Result:='...'+MidEx(Path,Length(Path)-needLength,needLength+1,MIDEX_DIFF_START,'\','\');
+2:Result:=MidEx(Path,1,NeedLength,MIDEX_DIFF_END,'\','\')+'...';
+end;//select
+End;//TruncPath
+
+Function BuildPath(FolderName,Name:String):String;
+Begin
+FolderName:=TruncateSpaces(FolderName,TSpTT_DEL_BOTH);
+If (mid(FolderName,Length(FolderName))='\') or (FolderName='')  
+ then result:=FolderName+Name
+ else result:=FolderName+'\'+Name;
+End;//BuildPath
+
+Function BuildRemotePath(comp,path:String):String;
+Begin
+ Result:='\\'+comp+'\'+Modify(path,':','$')
+End;
+
+
+Function EnumFiles(Path:String; var Files:TStrArray;FullPath:Boolean=False;WildCard:String='*'):Integer;
+Var FSR:WIN32_FIND_DATA;
+    hFindFile:Cardinal;
+    Pth:String;
+    Label fin;
+Begin
+SetLength(Files,0);
+Pth:=BuildPath(Path,WildCard);
+Result:=0;
+If WildCard='*' then
+ Begin
+  hFindFile:=FindFirstFile(PChar(Pth),FSR);
+  //'.'
+  If hFindFile=INVALID_HANDLE_VALUE then goto fin;
+
+  if (PasStr(FSR.cFileName)='.') or (PasStr(FSR.cFileName)='..')
+    then FindNextFile(hFindFile,fsr);
+  //'..'
+ End//AllFiles
+Else
+ Begin
+  hFindFile:=FindFirstFile(PChar(Pth),FSR);
+  If hFindFile=INVALID_HANDLE_VALUE then goto fin;
+  if (fsr.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
+   Begin
+    if FullPath
+     then AppendElement(Files,BuildPath(Path,PasStr(FSR.cFileName)))
+     Else AppendElement(Files,PasStr(FSR.cFileName));
+    inc(result);
+   End;
+ End;//WildedFiles
+While FindNextFile(hFindFile,fsr) do
+ Begin
+  if (fsr.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
+   Begin
+    if FullPath
+     then AppendElement(Files,BuildPath(Path,PasStr(FSR.cFileName)))
+     Else AppendElement(Files,PasStr(FSR.cFileName));
+    inc(result);
+   End;
+ End;
+fin:
+FindClose(hFindFile);
+End;//EnumFiles
+
+Function EnumFolders(Path:String; var Files:TStrArray;FullPath:Boolean=False):Integer;
+Var FSR:WIN32_FIND_DATA;
+    hFindFile:Cardinal;
+    Pth:String;
+    Label fin;
+Begin
+SetLength(Files,0);
+Pth:=BuildPath(Path,'*');
+Result:=0;
+hFindFile:=FindFirstFile(PChar(Pth),FSR);
+//'.'
+If hFindFile=INVALID_HANDLE_VALUE then goto fin;
+
+if (PasStr(FSR.cFileName)='.') or (PasStr(FSR.cFileName)='..')
+    then FindNextFile(hFindFile,fsr);
+//'..'
+While FindNextFile(hFindFile,fsr) do
+ Begin
+  if (fsr.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)<>0 then
+   Begin
+    if FullPath
+     then AppendElement(Files,BuildPath(Path,PasStr(FSR.cFileName)))
+     Else AppendElement(Files,PasStr(FSR.cFileName));
+    inc(result);
+   End;
+ End;
+fin:
+FindClose(hFindFile);
+End;//EnumFolders
+
+
+Function BuildTree(RootFolder:String;var Files:TStrArray;FullPath:Boolean=False;IncludeFiles:Boolean=True;IncludeFolders:Boolean=False;WildCard:String='*'):Integer;
+Var CurFiles,FolderArray:TStrArray;
+    j:Integer;
+Begin
+ Result:=0;
+ EnumFolders(RootFolder,FolderArray,True);
+ for j:=0 to high (FolderArray) do Result:=Result+BuildTree(FolderArray[j],Files,FullPath,IncludeFiles,IncludeFolders,WildCard);
+ if IncludeFiles then
+  Begin
+   EnumFiles(RootFolder,CurFiles,FullPath,WildCard);
+   for j:=0 to high(CurFiles) do
+    Begin
+     AppendElement(Files,CurFiles[j]);
+     Inc(Result);
+    End;
+  End;//Files
+ If IncludeFolders then
+  if FullPath then AppendElement(Files,RootFolder)
+              else AppendElement(Files,ProcessPath(RootFolder,PPPT_FILENAME_FILEEXT));
+End;//BuildFileTree
+
+
+Procedure EnumDrives(var DrvLetters:TStrArray);
+var i:char;S:String;
+Begin
+SetLength(DrvLetters,0);
+For i:='A' to 'B' do
+ Begin
+   S:=i+':\';
+  if GetDriveType(PChar(S))>1 then
+   Begin
+    SetLength(DrvLetters,Length(DrvLetters)+1);
+    DrvLetters[High(DrvLetters)]:=i;
+   End;
+ End;
+for i:='C' to 'Z' do
+ Begin
+   S:=i+':\';
+  if GetDriveType(PChar(S))>1 then
+   Begin
+    SetLength(DrvLetters,Length(DrvLetters)+1);
+    DrvLetters[High(DrvLetters)]:=i;
+   End
+  Else exit;
+ End;
+End;
+
+
+function FileDate(fn:String):Double;
+Var _FileDate:Integer;
+Begin
+_FileDate:=FileLastWrite(fn);
+  Result :=
+    EncodeDate(
+      LongRec(_FileDate).Hi shr 9 + 1980,
+      LongRec(_FileDate).Hi shr 5 and 15,
+      LongRec(_FileDate).Hi and 31) +
+    EncodeTime(
+      LongRec(_FileDate).Lo shr 11,
+      LongRec(_FileDate).Lo shr 5 and 63,
+      LongRec(_FileDate).Lo and 31 shl 1, 0);
+End;
+
+function FileCreationTime(fn:String):Double;
+
+function FileCreated(const FileName: string): Integer;
+type  LongRec = packed record
+    case Integer of
+      0: (Lo, Hi: Word);
+      1: (Words: array [0..1] of Word);
+      2: (Bytes: array [0..3] of Byte);
+  end;
+var
+  Handle: THandle;
+  FindData: TWin32FindData;
+  LocalFileTime: TFileTime;
+begin
+  Handle := FindFirstFile(PChar(FileName), FindData);
+  if Handle <> INVALID_HANDLE_VALUE then
+  begin
+    Windows.FindClose(Handle);
+//    if (FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) = 0 then
+    begin
+      FileTimeToLocalFileTime(FindData.ftCreationTime, LocalFileTime);
+      if FileTimeToDosDateTime(LocalFileTime, LongRec(Result).Hi,
+        LongRec(Result).Lo) then Exit;
+    end;
+  end;
+  Result := -1;
+end;
+Var _FileDate:Integer;
+Begin
+_FileDate:=FileCreated(fn);
+  Result :=
+    EncodeDate(
+      LongRec(_FileDate).Hi shr 9 + 1980,
+      LongRec(_FileDate).Hi shr 5 and 15,
+      LongRec(_FileDate).Hi and 31) +
+    EncodeTime(
+      LongRec(_FileDate).Lo shr 11,
+      LongRec(_FileDate).Lo shr 5 and 63,
+      LongRec(_FileDate).Lo and 31 shl 1, 0);
+end;//FileCreationTime
+
+Function GetFileSize(fn:String):Int64;
+Var FSR:WIN32_FIND_DATA;
+    hFindFile:Cardinal;
+Label Fin;
+Begin
+Result:=0;
+hFindFile:=FindFirstFile(PChar(fn),FSR);
+If hFindFile=INVALID_HANDLE_VALUE then goto fin;
+Result:=FSR.nFileSizeHigh*4294967296+FSR.nFileSizeLow;
+fin:FindClose(hFindFile);
+End; //GetFileSize
+
+
+Function GetFolderSize(RootFolder:String):Int64;
+Var FSR:WIN32_FIND_DATA;
+    hFindFile:Cardinal;
+    Pth:String;
+    Label fin;
+    
+Begin
+ Result:=0;
+ Pth:=BuildPath(RootFolder,'*'); 
+ hFindFile:=FindFirstFile(PChar(Pth),FSR);
+
+If hFindFile=INVALID_HANDLE_VALUE then goto fin;
+
+ if (PasStr(FSR.cFileName)='.') or (PasStr(FSR.cFileName)='..') then FindNextFile(hFindFile,fsr);
+    
+While FindNextFile(hFindFile,fsr) do
+ Begin
+  if (fsr.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY)=0 then
+   Begin
+    Result:=Result+FSR.nFileSizeHigh*4294967296+FSR.nFileSizeLow;
+   End
+  else
+   Begin
+    Result:=Result+GetFolderSize(BuildPath(RootFolder,PasStr(FSR.cFileName))); 
+   End;
+ End;
+fin:
+windows.FindClose(hFindFile);
+End;//GetFolderSize
+
+
+function GetDiskSize(drive: String; var free_size, total_size: Int64): Boolean;
+begin
+    Result := GetDiskFreeSpaceEx(PChar(drive), Free_size, Total_size, nil);
+    if not result then
+     begin
+      free_size:=-1;
+      total_size:=-1;
+     end;
+end;//getdisksize
+
+Function GetDiskSizeFree(drive:String):Int64;
+var free,avail:Int64;
+Begin
+ GetDiskSize(drive,free,avail);
+ result:=free;
+End;
+
+Function GetDiskSizeAvail(drive:String):Int64;
+var free,avail:Int64;
+Begin
+ GetDiskSize(drive,free,avail);
+ result:=avail;
+End;
+
+Function FileVersion(FileName: string):String;
+var Major1, Major2,
+    Minor1, Minor2: Integer;
+    Info: Pointer;
+    InfoSize: DWORD;
+    FileInfo: PVSFixedFileInfo;
+    FileInfoSize: DWORD;  
+    Tmp: DWORD;  
+begin
+    Result:='';
+    InfoSize := GetFileVersionInfoSize(PChar(FileName), Tmp);  
+    if InfoSize = 0 then  
+      //Файл не содержит информации о версии 
+    else  
+    begin      
+      GetMem(Info, InfoSize);  
+      try  
+        GetFileVersionInfo(PChar(FileName), 0, InfoSize, Info);  
+        VerQueryValue(Info, '\', Pointer(FileInfo), FileInfoSize);  
+        Major1 := FileInfo.dwFileVersionMS shr 16;  
+        Major2 := FileInfo.dwFileVersionMS and $FFFF;  
+        Minor1 := FileInfo.dwFileVersionLS shr 16;  
+        Minor2 := FileInfo.dwFileVersionLS and $FFFF;  
+      finally  
+        FreeMem(Info, FileInfoSize);  
+      end;
+    Result:=Int2Str(Major1)+'.'+
+    	    Int2Str(Major2)+'.'+
+            Int2Str(Minor1)+'.'+
+            Int2Str(Minor2);
+    end;
+end;//FileVersion
+
+function GethInstancePath: String;
+var
+ TheFileName : array[0..MAX_PATH] of char;
+begin
+ FillChar(TheFileName, sizeof(TheFileName), #0);
+ GetModuleFileName(hInstance, TheFileName, sizeof(TheFileName));
+ Result := TheFileName;
+end;
+
+Function deltree(path:String):Boolean;
+var FileArr,FolderArr:TStrArray;
+    j:Integer;
+Begin
+ Result:=true;
+ EnumFolders(path,FolderArr,true);
+ for j:=0 to high(FolderArr) do result:=result and deltree(FolderArr[j]);
+ EnumFiles(path,FileArr,true);
+ for j:=0 to high(FileArr) do result:=result and Del(FileArr[j]);
+ result:=result and del(path);
+End;
+
+
+
+//CONST
+// CSIDL_PERSONAL             = $0005; //C:\Мои документы
+// CSIDL_APPDATA              = $001A; //C:\WINDOWS\Application Data
+// CSIDL_LOCAL_APPDATA        = $001C; //C:\WINDOWS\Local Settings\Application Data
+// CSIDL_INTERNET_CACHE       = $0020; //C:\WINDOWS\Temporary Internet Files
+// CSIDL_COOKIES              = $0021; //C:\WINDOWS\Cookies
+// CSIDL_HISTORY              = $0022; //C:\WINDOWS\History
+// CSIDL_COMMON_APPDATA       = $0023; //C:\WINDOWS\All Users\Application Data
+// CSIDL_WINDOWS              = $0024; //C:\WINDOWS
+// CSIDL_SYSTEM               = $0025; //C:\WINDOWS\SYSTEM
+// CSIDL_PROGRAM_FILES        = $0026; //C:\Program Files
+// CSIDL_MYPICTURES           = $0027; //C:\Мои документы\Мои рисунки
+// CSIDL_PROGRAM_FILES_COMMON = $002B; //C:\Program Files\Common Files
+// CSIDL_DESKTOP              = $0000; //C:\WINDOWS\Рабочий стол
+// CSIDL_PROGRAMS             = $0002; //C:\WINDOWS\Главное меню\Программы
+// CSIDL_FAVORITES            = $0006; //C:\WINDOWS\Избранное
+// CSIDL_STARTUP              = $0007; //C:\WINDOWS\Главное меню\Программы\Автозагрузка
+// CSIDL_RECENT               = $0008; //C:\WINDOWS\Recent
+// CSIDL_SENDTO               = $0009; //C:\WINDOWS\SendTo
+// CSIDL_STARTMENU            = $000b; //C:\WINDOWS\Главное меню
+// CSIDL_NETHOOD              = $0013; //C:\WINDOWS\NetHood
+// CSIDL_FONTS                = $0014; //C:\WINDOWS\FONTS
+// CSIDL_TEMPLATES            = $0015; //C:\WINDOWS\ShellNew
+// CSIDL_COMMON_PROGRAMS      = $0017; //C:\WINDOWS\All Users\Главное меню\Программы
+// CSIDL_PRINTHOOD            = $001b; //C:\WINDOWS\PrintHood
+//
+// CSIDL_INTERNET             = $0001;
+// CSIDL_CONTROLS             = $0003;
+// CSIDL_PRINTERS             = $0004;
+// CSIDL_BITBUCKET            = $000a;
+// CSIDL_DESKTOPDIRECTORY     = $0010;
+// CSIDL_DRIVES               = $0011;
+// CSIDL_NETWORK              = $0012;
+// CSIDL_COMMON_STARTMENU     = $0016;
+// CSIDL_COMMON_STARTUP       = $0018;
+// CSIDL_COMMON_DESKTOPDIRECTORY = $0019;
+// CSIDL_ALTSTARTUP           = $001d;         // DBCS
+// CSIDL_COMMON_ALTSTARTUP    = $001e;         // DBCS
+// CSIDL_COMMON_FAVORITES     = $001f;
+function SpecialDir(Dir: Integer): String;
+var
+ Path: array[0..MAX_PATH] of Char;
+begin
+ Result := '';
+ if Succeeded(SHGetFolderPath(0, Dir, 0, 0, Path)) then Result := Path;
+end;
+
+
+Function GetTemp:String;
+var TheFileName : array[0..MAX_PATH] of char;
+begin
+ FillChar(TheFileName, sizeof(TheFileName), #0);
+ GetTempPath(sizeof(TheFileName),TheFileName);
+ Result := TheFileName;
+end;//GetTemp
+
+
+Function GetVolumeSerial(vol:char):String;
+var
+	DrivePath : string;
+	MaximumComponentLength : DWORD;
+	FileSystemFlags : DWORD;
+  volserial:cardinal;
+	VolumeName : string;
+Begin
+  volserial:=0;
+	DrivePath := vol + ':\';
+	SetLength(VolumeName, 64);
+	GetVolumeInformation(PChar(DrivePath),PChar(VolumeName),
+	Length(VolumeName),@volserial,MaximumComponentLength,FileSystemFlags,nil,0);
+  result:=int2hex(volserial,8);
+end;
+
+

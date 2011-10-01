@@ -1,0 +1,84 @@
+unit U_CRTLC_TCISimpleEvent;
+interface
+uses windows,U_CRTL;
+Type TCISimpleEvent=Class
+private
+ fHandle:Cardinal;
+ fState:Boolean;
+ fThIdSet:Cardinal;
+ fThIdReset:Cardinal;
+ fThIdWaitFor:Cardinal;
+ fStrDataSet:String;
+ fStrDataReset:String;
+ fStrDataWaitFor:String;
+public
+ property Handle:Cardinal read fHandle;
+ //Дескриптор события
+ property State:Boolean read fState;
+ //Состояние события: true =Signaled, False=NonSignaled
+ property ThIdSet:Cardinal read fThIdSet;
+ //Дескриптор потока, вызвавшего SetEvent последним
+ property ThIdReset:Cardinal read fThIdReset;
+ //Дескриптор потока, вызвавшего ResetEvent последним
+ property ThIdWaitFor:Cardinal read fThIdWaitFor;
+ //Дескриптор потока, вызвавшего WaitFor последним
+ property StrDataSet:String read fStrDataSet;
+ //Пользовательские данные, передаваемые в SetEvent
+ property StrDataReset:String read fStrDataReset;
+ //Пользовательские данные, передаваемые в ResetEvent
+ property StrDataWaitFor:String read fStrDataWaitFor;
+ //Пользовательские данные, передаваемые в WaitFor
+ function WaitFor(TimeOut:cardinal=INFINITE;StrData:String=''):cardinal;
+ //вернёт результат WaitForSingleObject(Handle)
+ procedure SetEvent(StrData:String='');
+ //Вызовет SetEvent(Handle)
+ procedure ResetEvent(StrData:String='');
+ //Вызовет ResetEvent(Handle)
+ constructor Create(initialState:Boolean=False);
+ //Конструктор класса. initialState определяет начальное состояние события
+ destructor Destroy;override;
+end;//TSimpleEvent
+//Неименованное событие. Содержит информацию своём состоянии,
+//о потоке, который последним вызывал тот или иной метод
+//и произвольные опциональные данные пользователя (параметры StrData).
+implementation
+
+constructor TCISimpleEvent.Create;
+begin
+ fstate:=initialState;
+ fHandle:=CreateEvent(nil,true,fstate,nil);
+end;//Create
+
+destructor TCISimpleEvent.Destroy;
+begin
+ CloseHandle(fHandle);
+end;//Destroy
+
+function TCISimpleEvent.WaitFor;
+begin
+ fThIdWaitFor     :=GetCurrentThreadId;
+ fStrDataWaitFor  :=StrData;
+ result:=WaitForSingleObject(fHandle,TimeOut);
+ if result=wait_timeout then
+  begin
+   nop;
+  end;
+ fThIdWaitFor     :=0;
+end;//WaitFor
+
+procedure TCISimpleEvent.SetEvent;
+begin
+ fState           :=True;
+ fThIdSet         :=GetCurrentThreadId;
+ fStrDataSet      :=StrData;
+ Windows.SetEvent(fHandle);
+end;//SetEvent
+
+procedure TCISimpleEvent.ResetEvent;
+begin
+ fState           :=False;
+ fThIdReSet       :=GetCurrentThreadId;
+ fStrDataReset    :=StrData;
+ windows.ResetEvent(fHandle);
+end;//ResetEvent
+end.

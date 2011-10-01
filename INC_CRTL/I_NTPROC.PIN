@@ -1,0 +1,156 @@
+Function NTGetProcessList(var SA:TStrArray):Integer;
+var
+  ph: THandle; //дескрипторы процесса и снимка
+  mh: hmodule; //дескриптор модуля
+  procs: array[0..$FFF] of dword; //массив для хранения дескрипторов процессов
+  count, cm: cardinal; //количество процессов
+  i: integer;
+  ModName: array[0..max_path] of char; //имя модуля
+  label fin;
+begin
+  SetLength(SA,0);
+   if not EnumProcesses(@procs, sizeof(procs), count) then
+    begin
+     goto fin;
+    end;
+    for i := 0 to count div 4 - 1 do
+    begin
+      ph := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ,
+        false, procs[i]);
+      if ph > 0 then
+      begin
+        EnumProcessModules(ph, @mh, 4, cm);
+        GetModuleFileNameEx(ph, mh, ModName, sizeof(ModName));
+        AppendElement(SA,ModName);
+        CloseHandle(ph);
+      end;
+    end;
+fin:
+Result:=Length(SA);
+end;//GetProcessList
+
+(*
+//Какие - то примеры
+procedure EnableDebugPrivileges; // Получить привилегии отладчика 
+var
+  hToken: THandle;
+  tp: TTokenPrivileges;
+  DebugNameValue: Int64;
+  ret: Cardinal;
+begin
+  OpenProcessToken(GetCurrentProcess,TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY,hToken); // Получаем маркер доступа текущего процесса
+  // Получаем значение отладочных привилегий
+  LookupPrivilegeValue(nil,'SeDebugPrivilege',DebugNameValue);
+  tp.PrivilegeCount := 1; // Включаем отладочные привилегии
+  tp.Privileges[0].Luid := DebugNameValue;
+  tp.Privileges[0].Attributes := SE_PRIVILEGE_ENABLED;
+  // Применяем обновленные привилегии
+  AdjustTokenPrivileges(hToken,False,tp,sizeof(tp),nil,ret);
+end;
+
+procedure DisableDebugPrivileges; // Отключить привилегии отладчика
+var
+  hToken: THandle; 
+  tp: TTokenPrivileges; 
+  DebugNameValue: Int64;
+  ret: Cardinal;
+begin
+  OpenProcessToken(GetCurrentProcess,TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY,hToken);
+  LookupPrivilegeValue(nil,'SeDebugPrivilege',DebugNameValue);
+  tp.PrivilegeCount := 1;
+  tp.Privileges[0].Luid := DebugNameValue;
+  tp.Privileges[0].Attributes := 0; // Отключаем отладочные привилегии
+  AdjustTokenPrivileges(hToken,False,tp,sizeof(tp),nil,ret);
+end;
+*)
+
+function NTKillProcess(dwPID:Cardinal):Boolean;overload;
+var
+ hToken:THandle;
+ SeDebugNameValue:Int64;
+ tkp:TOKEN_PRIVILEGES;
+ ReturnLength:Cardinal;
+ hProcess:THandle;
+begin
+ Result:=false;
+ // Добавляем привилегию SeDebugPrivilege
+ // Для начала получаем токен нашего процесса
+ if not OpenProcessToken( GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES
+  or TOKEN_QUERY, hToken ) then
+    exit;
+
+ // Получаем LUID привилегии
+ if not LookupPrivilegeValue( nil, 'SeDebugPrivilege', SeDebugNameValue )
+  then begin
+   CloseHandle(hToken);
+   exit;
+  end;
+
+ tkp.PrivilegeCount:= 1;
+ tkp.Privileges[0].Luid := SeDebugNameValue;
+ tkp.Privileges[0].Attributes := SE_PRIVILEGE_ENABLED;
+
+ // Добавляем привилегию к нашему процессу
+ AdjustTokenPrivileges(hToken,false,tkp,SizeOf(tkp),tkp,ReturnLength);
+ if GetLastError<>ERROR_SUCCESS  then exit;
+
+ // Завершаем процесс. Если у нас есть SeDebugPrivilege, то мы можем
+ // завершить и системный процесс
+ // Получаем дескриптор процесса для его завершения
+ hProcess := OpenProcess(PROCESS_TERMINATE, FALSE, dwPID);
+ if hProcess =0  then exit;
+  // Завершаем процесс
+   if not TerminateProcess(hProcess, DWORD(-1))
+    then exit;
+ CloseHandle( hProcess );
+
+ // Удаляем привилегию
+ tkp.Privileges[0].Attributes := 0;
+ AdjustTokenPrivileges(hToken, FALSE, tkp, SizeOf(tkp), tkp, ReturnLength);
+ if GetLastError<>  ERROR_SUCCESS
+  then exit;
+
+ Result:=true;
+end;//NTKillProcess pid
+
+
+Function NTKillProcess(psname:String;fullname:Boolean=False):Boolean;overload;
+var
+  le:integer;
+  ph: THandle; //дескрипторы процесса и снимка
+  mh: hmodule; //дескриптор модуля
+  procs: array[0..$FFF] of dword; //массив для хранения дескрипторов процессов
+  count, cm: cardinal; //количество процессов
+  i: integer;
+  ModName: array[0..max_path] of char; //имя модуля
+  label fin;
+
+Begin
+Result:=False;
+   if not EnumProcesses(@procs, sizeof(procs), count) then
+    begin
+      goto fin;
+    end;
+    for i := 0 to count div 4 - 1 do
+    begin
+      ph := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ or PROCESS_TERMINATE,
+        false, procs[i]);
+      if ph > 0 then
+      begin
+        EnumProcessModules(ph, @mh, 4, cm);
+        GetModuleFileNameEx(ph, mh, ModName, sizeof(ModName));
+//        msgbox(modname,psname);
+        if iif(fullname,ucase(modname),ucase(processpath(ModName,PPPT_FILENAME_FILEEXT)))=ucase(psname) then
+         Begin
+          Result:=NTKillProcess(procs[i]);
+          le:=GetLastError;
+          CloseHandle(ph);
+          if not result then setlasterror(le);
+          goto fin;
+         End;
+        CloseHandle(ph);
+      end;
+    end;
+SetLastError(87);
+fin:
+End;//NTKillProcess by psName

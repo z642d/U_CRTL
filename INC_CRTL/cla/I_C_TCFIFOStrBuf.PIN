@@ -1,0 +1,51 @@
+Constructor TCFIFOStrBuf.Create;
+Begin
+ fLock:=TCCriticalSection.Create;
+ head:=Nil;
+ tail:=Nil;
+ fCount:=0;
+End;//TCFIFOStrBuf.Create
+
+Destructor TCFIFOStrBuf.Destroy;
+Begin
+ while count>0 do GetMsg;
+ fLock.Destroy;
+End;//TCFIFOStrBuf.Destroy
+
+Procedure TCFIFOStrBuf.PutMsg;
+var p:PStrList;
+begin
+ if S='' then exit;
+ fLock.Enter;
+ try
+  new(p);
+  p^.Data:=S;
+  if tail<>nil then tail^.nextptr:=p;
+  p^.prevptr:=tail;
+  p^.nextptr:=nil;
+  tail:=p;
+  if head=nil then head:=p;
+  inc(fCount); 
+ finally
+  fLock.leave;
+ end;//try
+end;//putmsg
+
+Function TCFIFOStrBuf.GetMsg;
+var p:PStrList;
+Begin
+fLock.Enter;
+ try
+  Result:='';
+  if head=nil then exit;
+  Result:=head^.Data;
+  p:=head;
+  head:=head^.nextptr;
+  dispose(p);
+  if head=nil then tail:=nil
+              else head^.prevptr:=nil;
+  dec(fCount);            
+finally
+fLock.Leave;
+end;//try
+End;//GetMsg

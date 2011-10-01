@@ -1,0 +1,3 @@
+function IcmpCreateFile;        external 'Icmp.Dll';
+function IcmpCloseHandle;       external 'Icmp.Dll';
+Function IcmpSendEcho;          external 'Icmp.Dll';

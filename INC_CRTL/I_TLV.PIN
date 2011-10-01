@@ -1,0 +1,46 @@
+procedure BufferizeTL4VMessageIteration(Const protoHeader:String; Var PrevData:String; var outMsgArr:TStrArray);
+var i:Integer;
+    S:String;
+    needLength:Integer;
+Begin
+ i:=instr(PrevData,protoHeader);
+ //первое вхождение заголовка в PrevData
+ if i=0 then exit;
+ //Заголовка нет пока - принимаем мусор
+
+ needLength:=String42Integer(mid(PrevData,i+length(protoHeader),4));
+ //ожидаемая длина сообщения
+ if (length(PrevData)-(i-1))<needLength then exit;
+ //сообщение ещё не дошло - выход
+
+ S:=mid(PrevData,i+length(protoHeader)+4,needLength);
+ AppendElement(outMsgArr,S);
+ //Записали сообщение в результирующий массив
+ PrevData:=Substr(PrevData,i+needLength+length(protoHeader)+4,length(PrevData));
+ //Остаток от сообщения
+end;//BufferizeTLVMessageIteration
+
+Procedure BufferizeTL4VMessage(msg:String; Const protoHeader:String; Var PrevData:String; var outMsgArr:TStrArray);
+var pdlen:Integer;
+begin
+ PrevData:=PrevData+msg;
+ setlength(outMsgArr,0);
+ repeat
+ pdlen:=length(PrevData);
+ BufferizeTL4VMessageIteration(protoHeader,PrevData,outMsgArr);
+ until pdlen=length(PrevData);
+end;//BufferizeTLVMessage
+
+function MessageToTL4V;
+Begin
+ result:=protoHeader+Integer2String4(length(msg))+msg;
+End;
+
+function GetFirstTL4VMessage(msg:String; Const protoHeader:String):String;
+var sa:TStrArray;
+    S:String;
+Begin
+ S:='';
+ BufferizeTL4VMessage(msg,protoHeader,s,sa);
+ if length(SA)>0 then result:=SA[0] else result:=''; 
+end;

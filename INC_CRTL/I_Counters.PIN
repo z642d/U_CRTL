@@ -1,0 +1,70 @@
+Function GlobalCounter(Modify:Boolean=False;Increment:Integer=1;Reset:Boolean=False;ResetTo:Integer=0;Limit:Integer=$0FFFFFFF):Integer;
+ Const Content:Integer=0;
+ Const Inc:Integer=1;
+ Const RstTo:Integer=0;
+ Const Lmt:Integer=$0FFFFFFF;
+Begin
+ If Modify then
+  Begin
+   RstTo:=ResetTo;
+   Lmt:=Limit;
+   Inc:=Increment;   
+   if Reset then
+     Content:=RstTo;
+  End;
+ Result:=Content;
+ Content:=Content+Inc;
+ If Content>Lmt then Content:=RstTo;
+End;//GlobalCounter
+
+Function GC(Number:Byte;Modify:Boolean=False;Increment:Integer=1;Reset:Boolean=False;ResetTo:Integer=0;Limit:Integer=$0FFFFFFF):Integer;
+ Const NumberCount=5;
+ Const Content:Array [0..NumberCount-1] of Integer=(0,0,0,0,0);
+ Const Inc:Array [0..NumberCount-1] of Integer=(1,1,1,1,1);
+ Const RstTo:Array [0..NumberCount-1] of Integer=(0,0,0,0,0);
+ Const Lmt:Array [0..NumberCount-1] of Integer=($0FFFFFFF,$0FFFFFFF,$0FFFFFFF,$0FFFFFFF,$0FFFFFFF);
+Begin
+ If Number>NumberCount-1 then
+  Begin
+   result:=GlobalCounter(Modify,Increment,Reset,ResetTo,Limit);
+   exit;
+  End;
+ If Modify then
+  Begin
+   RstTo[number]:=ResetTo;
+   if Reset then
+     Content[number]:=RstTo[number];
+   Lmt[number]:=Limit;
+   Inc[number]:=Increment;
+  End;
+ Result:=Content[number];
+ Content[number]:=Content[number]+Inc[number];
+ If Content[number]>Lmt[number] then Content[number]:=RstTo[number];
+End;
+
+Function RegCounter(ord,min,max:Integer;Increment:Integer=1):Integer;
+Var S:String;
+    R:Integer;
+    Tmp:DWORD;
+Begin
+ S:=GetSetting('SOFTWARE\USTIN\CRTL\REGCOUNTER','RegCounter'+Int2Str(ord),HKEY_LOCAL_MACHINE);
+ R:=Str2Int(S,min);
+ Result:=R;
+ Tmp:=R+Increment;
+ if inbounds(tmp,min,max) then inc(R,Increment) else R:=min;  
+ SetSetting('SOFTWARE\USTIN\CRTL\REGCOUNTER','RegCounter'+Int2Str(ord),Int2Str(R),False,HKEY_LOCAL_MACHINE);
+End;
+
+Function GTC(Push:Boolean):Cardinal;
+Const GTC_Counter:Cardinal=0;
+Begin
+if Push then
+ Begin
+  GTC_Counter:=GetTickCount;
+  Result:=0;
+ End
+Else
+ Begin
+  Result:=GetTickCount-GTC_Counter;
+ End;
+End;

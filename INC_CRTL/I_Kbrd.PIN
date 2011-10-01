@@ -1,0 +1,173 @@
+procedure SimulateKeyDown(Key:byte);
+begin
+keybd_event(Key,0,0,0);
+end;
+
+procedure SimulateKeyUp(Key:byte);
+begin
+keybd_event(Key,0,KEYEVENTF_KEYUP,0);
+end;
+
+procedure SimulateKey(Key:byte);
+Begin
+keybd_event(Key,0,KEYEVENTF_KEYUP,0);
+keybd_event(Key,0,0,0);
+keybd_event(Key,0,KEYEVENTF_KEYUP,0);
+End;
+
+Function KeyToCode(Key:String):Byte;
+Begin
+Result:=0;
+if key='BS'	then Begin Result:=$08;exit;end;	//08
+if key='TAB'	then Begin Result:=$09;exit;end;	//09
+if key='ENTER'	then Begin Result:=$0D;exit;end;	//13
+if key='CAPS'	then Begin Result:=$14;exit;end;	//20
+if key='ESC'	then Begin Result:=$1B;exit;end;	//27
+if key='SPACE'	then Begin Result:=$20;exit;end;	//32
+if key='PGUP'	then Begin Result:=$21;exit;end;	//33
+if key='PGDN'	then Begin Result:=$22;exit;end;	//34
+if key='END'	then Begin Result:=$23;exit;end;	//35
+if key='HOME'	then Begin Result:=$24;exit;end;	//36
+if key='LEFT'	then Begin Result:=$25;exit;end;	//37
+if key='UP'	then Begin Result:=$26;exit;end;	//38
+if key='RIGHT'	then Begin Result:=$27;exit;end;	//39
+if key='DOWN'	then Begin Result:=$28;exit;end;	//40
+if key='PRNSCR'	then Begin Result:=$2C;exit;end;	//44
+if key='INS'	then Begin Result:=$2D;exit;end;	//45
+if key='DEL'	then Begin Result:=$2E;exit;end;	//46
+if key='0'	then Begin Result:=$30;exit;end;	//48
+if key='1'	then Begin Result:=$31;exit;end;	//49
+if key='2'	then Begin Result:=$32;exit;end;	//50
+if key='3'	then Begin Result:=$33;exit;end;	//51
+if key='4'	then Begin Result:=$34;exit;end;	//52
+if key='5'	then Begin Result:=$35;exit;end;	//53
+if key='6'	then Begin Result:=$36;exit;end;	//54
+if key='7'	then Begin Result:=$37;exit;end;	//55
+if key='8'	then Begin Result:=$38;exit;end;	//56
+if key='9'	then Begin Result:=$39;exit;end;	//57
+if key='A'	then Begin Result:=$41;exit;end;	//65
+if key='B'	then Begin Result:=$42;exit;end;	//66
+if key='C'	then Begin Result:=$43;exit;end;	//67
+if key='D'	then Begin Result:=$44;exit;end;	//68
+if key='E'	then Begin Result:=$45;exit;end;	//69
+if key='F'	then Begin Result:=$46;exit;end;	//70
+if key='G'	then Begin Result:=$47;exit;end;	//71
+if key='H'	then Begin Result:=$48;exit;end;	//72
+if key='I'	then Begin Result:=$49;exit;end;	//73
+if key='J'	then Begin Result:=$4A;exit;end;	//74
+if key='K'	then Begin Result:=$4B;exit;end;	//75
+if key='L'	then Begin Result:=$4C;exit;end;	//76
+if key='M'	then Begin Result:=$4D;exit;end;	//77
+if key='N'	then Begin Result:=$4E;exit;end;	//78
+if key='O'	then Begin Result:=$4F;exit;end;	//79
+if key='P'	then Begin Result:=$50;exit;end;	//80
+if key='Q'	then Begin Result:=$51;exit;end;	//81
+if key='R'	then Begin Result:=$52;exit;end;	//82
+if key='S'	then Begin Result:=$53;exit;end;	//83
+if key='T'	then Begin Result:=$54;exit;end;	//84
+if key='U'	then Begin Result:=$55;exit;end;	//85
+if key='V'	then Begin Result:=$56;exit;end;	//86
+if key='W'	then Begin Result:=$57;exit;end;	//87
+if key='X'	then Begin Result:=$58;exit;end;	//88
+if key='Y'	then Begin Result:=$59;exit;end;	//89
+if key='Z'	then Begin Result:=$5A;exit;end;	//90
+if key='APPS'	then Begin Result:=$5D;exit;end;	//93
+if key='NP0'	then Begin Result:=$60;exit;end;	//96
+if key='NP1'	then Begin Result:=$61;exit;end;	//97
+if key='NP2'	then Begin Result:=$62;exit;end;	//98
+if key='NP3'	then Begin Result:=$63;exit;end;	//99
+if key='NP4'	then Begin Result:=$64;exit;end;	//100
+if key='NP5'	then Begin Result:=$65;exit;end;	//101
+if key='NP6'	then Begin Result:=$66;exit;end;	//102
+if key='NP7'	then Begin Result:=$67;exit;end;	//103
+if key='NP8'	then Begin Result:=$68;exit;end;	//104
+if key='NP9'	then Begin Result:=$69;exit;end;	//105
+if key='NP*'	then Begin Result:=$6A;exit;end;	//106
+if key='NP+'	then Begin Result:=$6B;exit;end;	//107
+if key='NP-'	then Begin Result:=$6D;exit;end;	//109
+if key='NP/'	then Begin Result:=$6F;exit;end;	//111
+if key='F1'	then Begin Result:=$70;exit;end;	//112
+if key='F2'	then Begin Result:=$71;exit;end;	//113
+if key='F3'	then Begin Result:=$72;exit;end;	//114
+if key='F4'	then Begin Result:=$73;exit;end;	//115
+if key='F5'	then Begin Result:=$74;exit;end;	//116
+if key='F6'	then Begin Result:=$75;exit;end;	//117
+if key='F7'	then Begin Result:=$76;exit;end;	//118
+if key='F8'	then Begin Result:=$77;exit;end;	//119
+if key='F9'	then Begin Result:=$78;exit;end;	//120
+if key='F10'	then Begin Result:=$79;exit;end;	//121
+if key='F11'	then Begin Result:=$7A;exit;end;	//122
+if key='F12'	then Begin Result:=$7B;exit;end;	//123
+if key='F13'	then Begin Result:=$7C;exit;end;	//124
+if key='F14'	then Begin Result:=$7D;exit;end;	//125
+if key='F15'	then Begin Result:=$7E;exit;end;	//126
+if key='F16'	then Begin Result:=$7F;exit;end;	//127
+if key='F17'	then Begin Result:=$80;exit;end;	//128
+if key='F18'	then Begin Result:=$81;exit;end;	//129
+if key='F19'	then Begin Result:=$82;exit;end;	//130
+if key='F20'	then Begin Result:=$83;exit;end;	//131
+if key='F21'	then Begin Result:=$84;exit;end;	//132
+if key='F22'	then Begin Result:=$85;exit;end;	//133
+if key='F23'	then Begin Result:=$86;exit;end;	//134
+if key='F24'	then Begin Result:=$87;exit;end;	//135
+if key='NUMLOCK'then Begin Result:=$90;exit;end;	//144
+if key='SCRLOCK'then Begin Result:=$91;exit;end;	//145
+if key=''''     then Begin Result:=$DE;exit;end;        //222
+if key=','      then Begin Result:=$BC;exit;end;        //188
+if key='.'      then Begin Result:=$BE;exit;end;        //190
+if key='/'      then Begin Result:=$BF;exit;end;        //191
+if key='`'      then Begin Result:=$C0;exit;end;        //192
+if key='-'      then Begin Result:=$BD;exit;end;        //189
+if key='='      then Begin Result:=$BB;exit;end;        //197
+if key='\'	then Begin Result:=$DC;exit;end;        //220
+if key='['	then Begin Result:=$DB;exit;end;        //219
+if key=']'	then Begin Result:=$DD;exit;end;        //221
+if key=';'	then Begin Result:=$BA;exit;end;        //186
+end;//KeyToCode
+
+Procedure SendOneKey(Key:String);
+Var Code,Prefix:Byte;
+Begin
+ Prefix:=0;
+ If (instr(Key,'ALT')<>0)   or (instr(Key,'&_')<>0) then Prefix:=1;
+ If (instr(Key,'SHIFT')<>0) or (instr(Key,'%_')<>0) then Prefix:=Prefix or 2;
+ If (instr(Key,'CTRL')<>0)  or (instr(Key,'^_')<>0) then Prefix:=Prefix or 4;
+ If (instr(Key,'WIN')<>0)   or (instr(Key,'$_')<>0) then Prefix:=Prefix or 8;
+ Replace(Key,'ALT','');     Replace(Key,'&_','');
+ Replace(Key,'SHIFT','');   Replace(Key,'%_','');
+ Replace(Key,'CTRL','');    Replace(Key,'^_','');
+ Replace(Key,'WIN','');     Replace(Key,'$_','');
+ If key='' then exit;
+ if (key[1]='!') and (length(key)=3)
+    then Code:=Str2Int('$'+mid(Key,2,2),0)
+    else Code:=KeyToCode(Key);
+  if IsBitsSet(Prefix,1) then SimulateKeyDown(VK_MENU);
+   if IsBitsSet(Prefix,2) then SimulateKeyDown(VK_SHIFT);
+    if IsBitsSet(Prefix,4) then SimulateKeyDown(VK_CONTROL);
+     if IsBitsSet(Prefix,8) then SimulateKeyDown(VK_LWIN);
+      SimulateKey(Code);
+     if IsBitsSet(Prefix,8) then SimulateKeyUp(VK_LWIN);
+    if IsBitsSet(Prefix,4) then SimulateKeyUp(VK_CONTROL);
+   if IsBitsSet(Prefix,2) then SimulateKeyUp(VK_SHIFT);
+  if IsBitsSet(Prefix,1) then SimulateKeyUp(VK_MENU);
+End;//SendOneKey
+
+Procedure SendKeys(Seq:String);
+Var SA:TStrArray;
+    j:Integer;
+Begin
+Seq:=UCase(Seq);
+SplitToWords(Seq,SA);
+For j:=0 to High(SA) do SendOneKey(SA[j]);
+End;//SendKeys
+
+procedure NullMouseEvent;
+var i:tagINPUT;
+begin
+i.Itype:=INPUT_MOUSE;
+i.mi.dx:=0;
+i.mi.dy:=0;
+i.mi.time:=0;
+SendInput(1,i,sizeof(i));
+End;//NullMouseEvent
+

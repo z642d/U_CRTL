@@ -1,0 +1,229 @@
+Function MsgBox(Prompt:String;Title:String='';Style:Integer=vbInformation):Integer;overload;
+Begin
+Result:=MessageBox(0,pchar(Prompt),pchar(Title),Style);
+End;
+
+Function MsgBox(Prompt:Integer;Title:String='';Style:Integer=vbInformation):Integer;overload;
+Begin
+Result:=MessageBox(0,pchar(Int2Str(Prompt)),pchar(Title),Style);
+End;
+
+Function MsgBox(Prompt:Integer;Title:Integer;Style:Integer=vbInformation):Integer;overload;
+Begin
+Result:=MessageBox(0,pchar(Int2Str(Prompt)),pchar(Int2Str(Title)),Style);
+End;
+
+Function MsgBox(Prompt:String;Title:Integer;Style:Integer=vbInformation):Integer;overload;
+Begin
+Result:=MessageBox(0,pchar(Prompt),pchar(Int2Str(Title)),Style);
+End;
+
+Function MsgBox(Prompt:Boolean;Title:String='';Style:Integer=vbInformation):Integer;overload;
+Begin
+if Prompt
+ then Result:=MessageBox(0,'True',pchar(Title),Style)
+ else Result:=MessageBox(0,'False',pchar(Title),Style);
+End;
+
+Procedure UC;
+Begin
+Msgbox(StrUC,'Development team',64);
+End;
+
+Procedure GLE;
+var i:Integer;
+Begin
+i:=GetLastError;
+Msgbox(ISysErrorMessage(i),'Œ¯Ë·Í‡ '+Int2Str(i));
+End;
+
+Function GLEStr:String;overload;
+Begin
+Result:=ISysErrorMessage(GetLastError);
+End;
+
+Function GLEStr(ErrCode:Integer):String;overload;
+Begin
+Result:=Win1251ToOem(ISysErrorMessage(ErrCode));
+End;
+
+Function AnsiGLEStr(ErrCode:Integer):String;
+Begin
+Result:=ISysErrorMessage(ErrCode);
+End;
+
+
+
+Function Confirm(Prompt:String;Title:String='';NoByDef:Boolean=False):Boolean;
+Begin
+Result:=
+Msgbox(Prompt,Title,vbYesNo or vbExclamation or MB_DEFBUTTON2*Bool2Int(NoByDef) or MB_TOPMOST or MB_TASKMODAL)=vbYes;
+End;
+
+
+Type  TInputBoxSizeStruct=record
+       WndX,WndY,WndHeight,WndWidth,
+       SttX,SttY,SttHeight,SttWidth,
+       BtnX,BtnY,BtnHeight,BtnWidth,
+       EdtX,EdtY,EdtHeight,EdtWidth :Integer;
+      end;
+
+Procedure GetInputBoxSize(var SS:TInputBoxSizeStruct;Prompt,Title:String;Handle:Integer);
+var Rc:TRect;
+    dc:HDC;
+Begin
+
+//SystemParametersInfo(SPI_GETWORKAREA,0,PRc,0);
+dc:=GetDC(Handle);
+DrawText(dc,PChar(Prompt),Length(Prompt),RC,DT_CALCRECT);
+ReleaseDC(Handle,dc);
+
+SS.SttX:=3;
+SS.SttY:=3;
+SS.SttWidth:=RC.Right-RC.Left;
+SS.SttHeight:=rc.Bottom-RC.Top;
+If SS.SttWidth<120 then SS.SttWidth:=120;
+
+
+dc:=GetWindowDC(Handle);
+DrawText(dc,PChar(Prompt),Length(Prompt),RC,DT_CALCRECT);
+ReleaseDC(Handle,dc);
+
+SS.EdtX:=3;
+SS.Edty:=SS.SttHeight+3;
+ss.EdtWidth:=SS.SttWidth-6;
+SS.EdtHeight:=25;
+
+SS.BtnHeight:=25;
+SS.BtnWidth:=75;
+SS.BtnX:=(SS.SttWidth div 2)-(SS.BtnWidth div 2);
+SS.BtnY:=(3+SS.SttHeight+3+SS.EdtHeight+3);
+
+SS.WndHeight:=(3+SS.SttHeight+3+SS.EdtHeight+3+2*SS.BtnHeight+3);
+SS.WndWidth:=SS.SttWidth+6;
+
+
+SS.WndX:=((GetSystemMetrics(SM_CXSCREEN)) div 2)-(SS.WndWidth div 2);
+SS.WndY:=((GetSystemMetrics(SM_CYSCREEN)) div 2)-(SS.WndHeight div 2);
+End;
+
+
+function InputBoxWndProc(hWnd,uMsg,wParam,lParam:Integer):Integer;stdcall;
+ Var TextLength:Integer;
+     Text:PChar;
+     btn1,edit1:Integer;
+ begin
+  Case uMsg of
+  WM_KEYDOWN: if wParam=13 then
+               Begin
+               Result:=0;
+               SendMessage(GetParent(hwnd),WM_SysCommand,SC_CLOSE,0);
+               exit;
+               End;
+
+   WM_Command:
+    Begin
+      FILOInt(STACK_POP);//0
+      Edit1:=FILOInt(STACK_POP);
+      Btn1 :=FILOInt(STACK_POP);
+      FILOInt(STACK_PUSH,btn1);
+      FILOInt(STACK_PUSH,Edit1);
+      FILOInt(STACK_PUSH,0);
+
+      if lParam=btn1 then SendMessage(hwnd,WM_SysCommand,SC_CLOSE,0);
+      if lParam=Edit1 then if (HiWord(WParam)=EN_VSCROLL) then
+       Begin
+       SetFocus(btn1);
+       keybd_event(32, 0, 0, 0);
+       keybd_event(32, 0, KEYEVENTF_KEYUP, 0);
+       End;
+    End;
+   WM_DESTROY: //if wParam=SC_CLOSE then
+    Begin
+      FILOInt(STACK_POP);//0
+      Edit1:=FILOInt(STACK_POP);
+      FILOInt(STACK_POP);//Btn1
+     TextLength := GetWindowTextLength(Edit1);
+     GetMem(Text,TextLength+1);
+     GetWindowText(Edit1,Text,TextLength+1);
+     FILOStr(Stack_Push,String(Text));
+     FreeMem(Text, TextLength + 1);
+      FILOInt(Stack_Push,$361);
+    End;
+  End;//select
+  Result := DefWindowProc(hWnd, uMsg, wParam, lParam);
+ end;//InputBoxWndProc
+
+Function InBox(Prompt:String;Title:String='';PrevVal:String=''):String;
+Var Btn,Static,Edit,hWnd,hFont,hmnu:Integer;
+    Msg:TMsg;
+    WinClass: TWndClassA;
+    ClassName:PChar;
+    SS:TInputBoxSizeStruct;
+Begin
+ClassName:='InputBoxWndClsA';
+Try
+  with WinClass do
+  begin
+    style              := CS_CLASSDC or CS_PARENTDC;
+    lpfnWndProc        := @InputBoxWndProc;
+    hInstance          := hInstance;
+    hbrBackground      := COLOR_WINDOW;//CreateSolidBrush(GetSysColor(COLOR_BTNFACE));
+    lpszClassname      := ClassName;
+    hCursor            := LoadCursor(0, IDC_ARROW);
+//    hIcon              := LoadIcon(0,IDI_HAND);
+  end;
+  RegisterClass(WinClass);
+  hWnd := CreateWindowEx(WS_EX_DLGMODALFRAME, ClassName,PChar(Title),
+                          WS_SYSMENU,0,0,0,0,0,0,hInstance, nil);
+  SetWindowLong(hWnd,GWL_WNDPROC,LongInt(@InputBoxWndProc));
+  Static := Createwindow('Static',PChar(Prompt),WS_VISIBLE or WS_CHILD or SS_LEFT,0,0,0,0,hWnd,0,hInstance,nil);
+  Btn    := CreateWindow('Button','OK',WS_VISIBLE or WS_CHILD or BS_DEFPUSHBUTTON or BS_TEXT ,216, 8, 75, 25, hWnd, 0,hInstance,nil);
+  Edit   := CreateWindowEx(WS_EX_CLIENTEDGE, 'Edit', '',
+         WS_CHILD or WS_VISIBLE  or WS_BORDER or ES_AUTOHSCROLL or ES_AUTOVSCROLL or ES_MULTILINE,
+         0, 0, 0, 0, hWnd, 0, hInstance, nil);
+
+  hFont := CreateFont(-11, 0, 0, 0, 400, 0, 0, 0, DEFAULT_CHARSET,OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,DEFAULT_PITCH or FF_DONTCARE, 'MS Sans Serif');
+  if hFont <> 0 then
+  begin
+    SendMessage(Btn, WM_SETFONT, hFont, 0);
+    SendMessage(Static, WM_SETFONT, hFont, 0);
+    SendMessage(Edit, WM_SETFONT, hFont, 0);
+  end;
+
+   GetInputBoxSize(SS,Prompt,title,Static);
+   MoveWindow(hWnd,SS.WndX,SS.WndY,SS.WndWidth,SS.WndHeight,True);
+   MoveWindow(Static,SS.SttX,SS.STTY,SS.SttWidth,SS.SttHeight,True);
+   MoveWindow(Edit,SS.EDtX,SS.edTY,SS.edtWidth,SS.edtHeight,True);
+   MoveWindow(Btn,SS.BtnX,SS.BtnY,SS.BtnWidth,SS.BtnHeight,True);
+
+   hmnu:=GetSystemMenu(HWnd,False);
+
+   DeleteMenu(hmnu,$F000,0);
+   DeleteMenu(hmnu,$F020,0);
+   DeleteMenu(hmnu,$F030,0);
+   DeleteMenu(hmnu,$F120,0);
+  SetWindowText(Edit,PChar(PrevVal));
+  SendMessage(Edit,EM_SetSel,0,Length(PrevVal));
+
+  SetFocus(Edit);
+  ShowWindow(hWnd,SW_SHOW);
+  SetForegroundWindow(hWnd);
+
+  FILOInt(STACK_PUSH,btn);
+  FILOInt(STACK_PUSH,Edit);
+  FILOInt(STACK_PUSH,0);
+  while(GetMessage(Msg, hWnd, 0, 0) and (FILOInt(STACK_PEEK)<>$361)) do
+  begin
+    TranslateMessage(msg);
+    DispatchMessage(msg);
+  end;
+  FILOInt(STACK_POP);//$361
+  result:=FiloStr(STACK_POP);
+  Replace(result,vbcrlf,'');
+  Finally
+  UnregisterClass(ClassName,hInstance);
+  end;
+End;
+
+

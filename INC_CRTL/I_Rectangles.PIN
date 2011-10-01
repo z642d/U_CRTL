@@ -1,0 +1,34 @@
+function Rect(Left, Top, Right, Bottom: Integer): TRect;
+begin
+  Result.Left := Left;
+  Result.Top := Top;
+  Result.Bottom := Bottom;
+  Result.Right := Right;
+end;
+
+function Point(X, Y: Integer): TPoint;
+begin
+  Result.X := X;
+  Result.Y := Y;
+end;
+
+function PtInRect(const Rect: TRect; const P: TPoint): Boolean;
+begin
+  Result := (P.X >= Rect.Left) and (P.X < Rect.Right) and (P.Y >= Rect.Top) and (P.Y < Rect.Bottom);
+end;
+
+function CenterPoint(const Rect: TRect): TPoint;
+begin
+  with Rect do
+  begin
+    Result.X := (Right - Left) div 2 + Left;
+    Result.Y := (Bottom - Top) div 2 + Top;
+  end;
+end;
+
+Function MoveRect(Rect:TRect;MoveTo:TPoint):TRect;
+Begin
+Result.Right:=Rect.Right+MoveTo.X-Rect.Left;
+Result.Bottom:=Rect.Bottom+MoveTo.Y-Rect.Top;
+Result.TopLeft:=MoveTo;
+End;

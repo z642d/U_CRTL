@@ -1,0 +1,432 @@
+(*Функции работы с массивами*)
+
+Function Join(StAr:Array of String;Delimiter:String='';Start:Integer=0;Finish:Integer=-1):String;overload;
+Var j:Integer;
+Begin
+Result:='';
+if length(StAr)=0 then exit;
+if Finish>High(StAr) then Finish:=-1;
+if Finish=-1 then Finish:=high(StAr);
+For j:=Start to (Finish-1) do Result:=Result+StAr[j]+Delimiter;
+if Finish>=start then Result:=Result+StAr[Finish];
+End;
+
+Function Join(StAr:Array of String;var Order:TIntArray;Delimiter:String=''):String;overload;
+Var j:Integer;
+Begin
+Result:='';
+if length(StAr)=Length(Order) then
+ Begin
+  For j:=0 to (high(StAr)-1) do Result:=Result+StAr[order[j]]+Delimiter;
+  Result:=Result+StAr[Order[high(StAr)]];
+ End
+Else Join(StAr,Delimiter);
+End;
+
+Function JoinI(const Arr:Array of int64;Delim:String=vbcrlf):String;overload;
+var j:Integer;
+    S:String;
+Begin
+Result:='';
+For j:=0 to high(Arr)-1 do
+  begin
+   Str(Arr[j],S);
+   Result:=Result+S+Delim;
+  end;
+j:=high(Arr);
+if j<0 then S:='' else Str(Arr[j],S);
+Result:=Result+S;
+End;//joini
+
+
+
+Function Filter(Source:Array of String; var Rslt:TStrArray;SubStr:String):Integer;OverLoad;
+Var j:Integer;
+Begin
+SetLength(Rslt,0);
+For j:=0 to high(Source) do
+ if StrSatisfy(Source[j],SubStr) then
+  Begin
+   SetLength(Rslt,Length(Rslt)+1);
+   Rslt[High(Rslt)]:=Source[j];
+  End;//If
+Result:=High(Rslt);
+End;//Filter
+
+Function Filter(Source:Array of String; var Rslt,Unsatisfactions:TStrArray;SubStr:String):Integer;Overload;
+Var j:Integer;
+Begin
+SetLength(Rslt,0);
+SetLength(Unsatisfactions,0);
+For j:=0 to high(Source) do
+ if StrSatisfy(Source[j],SubStr) then
+  Begin
+   SetLength(Rslt,Length(Rslt)+1);
+   Rslt[High(Rslt)]:=Source[j];
+  End  //If
+ Else
+  Begin
+   SetLength(Unsatisfactions,Length(Unsatisfactions)+1);
+   Unsatisfactions[High(Unsatisfactions)]:=Source[j];
+  End;
+Result:=High(Rslt);
+End;//Filter
+
+
+Procedure KillEquals(Var IA:TIntArray);
+Var TIA:TIntArray;
+    j:Integer;
+Begin
+ for j:=0 to high (IA) do
+  Begin
+   if ISElement(TIA,IA[j])=-1 then
+    appendElement(TIA,IA[j]);
+  End;
+ SetLength(IA,0);
+ for j:=0 to high(TIA) do AppendElement(IA,TIA[j]);
+End;
+
+Procedure StrQSort(Var Wds:TStrArray);overload;
+ procedure sort(l,r: integer);
+  var
+   i,j:integer;
+   x,y:String;
+  begin
+   i:=l; j:=r; x:=Wds[(l+r) DIV 2];
+  repeat
+    while IStrComp(PChar(Wds[i]),PChar(x))<0  do inc(i);
+    while IStrComp(PChar(Wds[j]),PChar(x))>0  do dec(j);
+    if i<=j then
+    begin
+      y:=Wds[i]; Wds[i]:=Wds[j]; Wds[j]:=y;
+      inc(i); dec(j);
+    end;
+  until i>j;
+  if l<j then sort(l,j);
+  if i<r then sort(i,r);
+ end;
+Begin
+ if length(Wds)=0 then exit;
+ Sort(0,High(Wds));
+End;//StrQSort
+
+
+
+Procedure StrQSort(Var Wds:TStrArray;Var Indexes:TIntArray);overload;
+ procedure sort(l,r: integer);
+  var
+   i,j,SV:integer;
+   x,y:String;
+  begin
+   i:=l; j:=r; x:=Wds[(l+r) DIV 2];
+  repeat
+    while IStrComp(PChar(Wds[i]),PChar(x))<0  do inc(i);
+    while IStrComp(PChar(Wds[j]),PChar(x))>0  do dec(j);
+    if i<=j then
+    begin
+      y:=Wds[i]; Wds[i]:=Wds[j]; Wds[j]:=y;
+      SV:=Indexes[i];Indexes[i]:=Indexes[j];Indexes[j]:=SV;
+      inc(i); dec(j);
+    end;
+  until i>j;
+  if l<j then sort(l,j);
+  if i<r then sort(i,r);
+ end;
+Var tmpInt:Integer;
+Begin
+ SetLength(Indexes,Length(Wds));
+ For TmpInt:=0 to High(Wds) do Indexes[TmpInt]:=TmpInt;
+ if length(Wds)=0 then exit;
+ Sort(0,High(Wds));
+End;//StrQSort
+
+
+Procedure IntQSort(Var IA:TIntArray);overload;
+ procedure sort(l,r: integer);
+  var
+   i,j:integer;
+   x,y:int64;
+  begin
+   i:=l; j:=r; x:=IA[(l+r) DIV 2];
+  repeat
+    while IA[i]<x  do inc(i);
+    while IA[j]>x  do dec(j);
+    if i<=j then
+    begin
+      y:=IA[i]; IA[i]:=IA[j]; IA[j]:=y;
+      inc(i); dec(j);
+    end;
+  until i>j;
+  if l<j then sort(l,j);
+  if i<r then sort(i,r);
+ end;
+Begin
+ if length(IA)=0 then exit;
+ Sort(0,High(IA));
+End;//IntQSort
+
+
+Procedure IntQSort(Var IA:TIntArray;Var Indexes:TIntArray);overload;
+ procedure sort(l,r: integer);
+  var
+   i,j,SV:integer;
+   x,y:int64;
+  begin
+   i:=l; j:=r; x:=IA[(l+r) DIV 2];
+  repeat
+    while IA[i]<x  do inc(i);
+    while IA[j]>x  do dec(j);
+    if i<=j then
+    begin
+      y:=IA[i]; IA[i]:=IA[j]; IA[j]:=y;
+      SV:=Indexes[i];Indexes[i]:=Indexes[j];Indexes[j]:=SV;      
+      inc(i); dec(j);
+    end;
+  until i>j;
+  if l<j then sort(l,j);
+  if i<r then sort(i,r);
+ end;
+Var tmpInt:Integer;
+Begin
+ SetLength(Indexes,Length(IA));
+ For TmpInt:=0 to High(IA) do Indexes[TmpInt]:=TmpInt;
+ if length(ia)=0 then exit;
+ Sort(0,High(IA));
+End;//IntQSort
+
+
+Procedure Concatenate(Var Rslt:TStrArray;Src:Array of String);
+Var j:Integer;
+Begin
+ For j:=0 to high(Src) do
+  Begin
+   SetLength(Rslt,Length(Rslt)+1);
+   Rslt[High(Rslt)]:=Src[j];
+  End;
+End;
+
+Function IsElement(TstArr:TStrArray;Element:String):Integer;OverLoad;
+Var j:Integer;
+PEl:PChar;
+Begin
+Result:=-1;
+PEl:=PChar(Element);
+For j:=0 to high(TstArr) do
+ If IStrComp(PChar(TstArr[j]),PEl)=0 then
+  Begin
+  Result:=j;
+  Exit;
+  End;
+End;//IsElement
+
+
+Function IsElement(TstArr:TByteArray;Element:Byte):Integer;OverLoad;
+Var j:Integer;
+Begin
+Result:=-1;
+For j:=0 to high(TstArr) do
+ If TstArr[j]=Element then
+  Begin
+  Result:=j;
+  Exit;
+  End;
+End;//IsElement
+
+
+Function IsElement(TstArr:TIntArray;Element:Int64):Integer;OverLoad;
+Var j:Integer;
+Begin
+Result:=-1;
+For j:=0 to high(TstArr) do
+ If TstArr[j]=Element then
+  Begin
+  Result:=j;
+  Exit;
+  End;
+End;//IsElement
+
+Function IsElement(TstArr:Array of word;Element:Integer):Integer;OverLoad;
+Var j:Integer;
+Begin
+Result:=-1;
+For j:=0 to high(TstArr) do
+ If TstArr[j]=Element then
+  Begin
+  Result:=j;
+  Exit;
+  End;
+End;//IsElement
+
+
+Procedure AppendElement(var Arr:TStrArray;NewElement:String);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TIntArray;NewElement:Int64);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TChArray;NewElement:Char);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TRealArray;NewElement:Real);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TDoubleArray;NewElement:Double);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TWordArray;NewElement:Word);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TByteArray;NewElement:Byte);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TCoolArray;NewElement:TCoolType);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+Procedure AppendElement(var Arr:TTVarArray;NewElement:TVariant);overload;
+Begin SetLength(Arr,Length(Arr)+1); Arr[High(Arr)]:=NewElement; End;
+
+//AppendElement
+
+Procedure AppendNElements(var Dest:TStrArray;Src:Array of String);overload;
+Var oldlen,j:Integer;
+Begin
+ oldlen:=Length(Dest);
+ SetLength(Dest,oldlen+Length(Src));
+ for j:=0 to high(src) do
+  Dest[oldlen+j]:=Src[j];
+End;
+
+Procedure AppendNElements(var Dest:TIntArray;Src:Array of Int64);overload;
+Var oldlen,j:Integer;
+Begin
+ oldlen:=Length(Dest);
+ SetLength(Dest,oldlen+Length(Src));
+ for j:=0 to high(src) do
+  Dest[oldlen+j]:=Src[j];
+End;
+
+Procedure CharArrToByteArr(var Source:TChArray;var Dest:TByteArray);
+var i,j:Integer;
+Begin
+ SetLength(Dest,Length(Source));
+ i:=High(Source);
+ For j:=0 to i do Dest[j]:=Ord(Source[j]);
+End;
+
+Procedure ByteArrToCharArr(var Source:TByteArray;var Dest:TChArray);
+var i,j:Integer;
+Begin
+ SetLength(Dest,Length(Source));
+ i:=High(Source);
+ For j:=0 to i do Dest[j]:=Chr(Source[j]);
+End;
+
+Procedure Swp(var A,B:Extended);Overload; Var C:Extended; Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:Boolean);Overload;  Var C:Boolean;  Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:Cardinal);Overload; Var C:Cardinal; Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:String);Overload;   Var C:String;   Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:Char);Overload;     Var C:Char;     Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:Word);Overload;     Var C:Word;     Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:Byte);Overload;     Var C:Byte;     Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:Int64);Overload;    Var C:Int64;    Begin C:=B;B:=A;A:=C;End;
+Procedure Swp(var A,B:Integer);Overload;  Var C:Integer;  Begin C:=B;B:=A;A:=C;End;
+//SWP
+
+
+Function DelElementn(var X: TStrArray; Index: Integer):Boolean;
+begin
+Result:=False;
+if Index > High(X) then Exit;
+if Index < Low(X)  then Exit;
+ if Index = High(X) then
+  begin
+   SetLength(X, Length(X) - 1);
+   Result:=True;
+   Exit;
+  end;
+Finalize(X[Index]);
+System.Move(X[Index + 1], X[Index],
+  (Length(X) - Index - 1) * SizeOf(string) + 1);
+ SetLength(X, Length(X) - 1);
+ Result:=True;
+end;//DelElement
+
+
+Function DelElement(var SA: TStrArray; Index: Integer):Boolean;
+var j:Integer;
+begin
+Result:=False;
+if Index > High(SA) then Exit;
+if Index < Low(SA)  then Exit;
+for j:=index to high(SA)-1 do
+ Begin
+  SA[j]:=SA[j+1]
+ End;
+SetLength(SA,High(SA));
+Result:=True;
+end;//DelElement
+
+Function DelElement(var SA: TIntArray; Index: Integer):Boolean;
+var j:Integer;
+begin
+Result:=False;
+if Index > High(SA) then Exit;
+if Index < Low(SA)  then Exit;
+for j:=index to high(SA)-1 do
+ Begin
+  SA[j]:=SA[j+1]
+ End;
+SetLength(SA,High(SA));
+Result:=True;
+end;//DelElement
+
+
+procedure FillLinear;
+var j:Integer;
+begin
+ setlength(IA,count);
+ for j:=0 to count-1 do ia[j]:=(j mod finish)+start;
+end;//FillLinear
+
+
+
+Procedure FillRand(var IA:TIntArray;Count:Integer;Range:Integer=0;KeepData:Integer=0);
+var j,i:Integer;
+    incomplete:Boolean;
+Begin
+Randomize;
+if Range<Count then Range:=Count;
+SetLength(IA,Count);
+if (KeepData<0) or (KeepData>=Count) then KeepData:=0; 
+
+for j:=KeepData to Count-1 do
+ Begin
+  incomplete:=True;
+  IA[j]:=Round(Random(Range));
+  While incomplete do
+   Begin
+    incomplete:=False;
+    for i:=0 to (j-1) do
+     Begin
+      if ia[i]=ia[j] then
+       Begin
+        incomplete:=True;
+        IA[j]:=Round(Random(Range));
+        break;
+       End;//if
+     End;//4i
+   End;//wend
+ End;//4 j
+End;//FillRand
+
+
+Procedure Shuffle(var IA:TIntArray);
+var na,qa:TIntArray;
+    j:Integer;
+Begin
+ FillRand(na,Length(IA));
+ SetLength(QA,Length(IA));
+ for j:=0 to high(IA) do qa[j]:=ia[na[j]];
+ for j:=0 to high(IA) do ia[j]:=qa[j];
+End;//Shuffle
+
+Function RandomString(Len:Integer):String;
+var j:Integer;
+Begin
+ Randomize;
+ SetLength(Result,Len);
+ for j:=1 to len do Result[j]:=Chr(Round(Random(256)));
+End;//RandomString
+

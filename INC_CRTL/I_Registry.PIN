@@ -1,0 +1,133 @@
+
+Function RegWriteString(RootKey:cardinal;Subkey,Name:String;Value:String;LazyWrite:Boolean=True):Boolean;
+ var key: hkey;
+ var le:cardinal;
+begin
+Result:=False;
+ le:=RegCreateKey(RootKey,PChar(SubKey),key);
+ if le = ERROR_SUCCESS then
+  begin
+    le:=RegSetValueEx(key, PChar(Name), 0, REG_SZ, PChar(Value), Length(Value) + 1);
+    If LazyWrite then RegCloseKey(Key) else RegFlushKey(key);
+    SetLastError(le);
+    result:=le=ERROR_SUCCESS;
+  end
+ else
+  SetLastError(le);
+
+end;//RegWriteString
+
+Function RegWriteInteger(RootKey:cardinal; Subkey,Name:String; Value: Integer;LazyWrite:Boolean=True):Boolean;
+ var key: hkey;
+ var le:cardinal;
+begin
+Result:=False;
+ le:=RegCreateKey(RootKey,PAnsiChar(SubKey),key);
+ if le = ERROR_SUCCESS then
+   begin
+    le:=RegSetValueEx(key, pchar(Name), 0, REG_DWORD, @Value, SizeOf(Value));
+    If LazyWrite then RegCloseKey(Key) else RegFlushKey(key);
+    SetLastError(le);
+    result:=le=ERROR_SUCCESS;
+   end
+ else
+  SetLastError(le); 
+end;//RegWriteInteger
+
+
+Function RegDelKey(RootKey:cardinal; Subkey:String;LazyWrite:Boolean=True):Boolean;
+ var key: hkey;
+ var le:cardinal;
+ var par,sub:String;
+begin
+Result:=False;
+ par:=ProcessPath(Subkey,PPPT_PARENTDIR);
+ sub:=ProcessPath(Subkey,PPPT_FILENAME_FILEEXT);
+ le:=RegCreateKey(RootKey,PChar(par),key);
+ if le = ERROR_SUCCESS then
+   begin
+    le:=RegDeleteKey(key, pchar(sub));
+    If LazyWrite then RegCloseKey(Key) else RegFlushKey(key);
+    SetLastError(le);
+    result:=le=ERROR_SUCCESS;
+   end
+ else
+  SetLastError(le);
+end;//RegDelKey
+
+Function RegDelValue(RootKey:cardinal; Subkey,Name:String;LazyWrite:Boolean=True):Boolean;
+ var key: hkey;
+ var le:cardinal;
+begin
+Result:=False;
+ le:=RegCreateKey(RootKey,PAnsiChar(SubKey),key);
+ if le = ERROR_SUCCESS then
+   begin
+    le:=RegDeleteValue(key, PChar(Name));
+    If LazyWrite then RegCloseKey(Key) else RegFlushKey(key);
+    SetLastError(le);
+    result:=le=ERROR_SUCCESS;
+   end
+ else
+   SetLastError(le);
+end;//RegDelValue
+
+
+
+
+function RegGetValue(const RootKey: HKEY; const Key, Name: String;
+         const ValueType: Cardinal; var RegValueType: Cardinal;
+         var ValueBuf: Pointer; var ValueSize: Integer): Boolean;
+var handle  : HKEY;
+    Buf     : Pointer;
+    BufSize : Cardinal;
+begin
+  Result := False;
+  ValueSize := 0;
+  ValueBuf := nil;
+  if RegOpenKeyEx(RootKey, PChar(Key), 0, KEY_READ, Handle) <> ERROR_SUCCESS then
+    exit;
+  BufSize := 0;
+  RegQueryValueEx(Handle, Pointer(Name), nil, @RegValueType, nil, @BufSize);
+  if BufSize <= 0 then
+    exit;
+  GetMem(Buf, BufSize);
+  if RegQueryValueEx(Handle, Pointer(Name), nil, @RegValueType, Buf, @BufSize) = ERROR_SUCCESS then
+    begin
+      ValueBuf := Buf;
+      ValueSize := Integer(BufSize);
+      Result := True;
+    end;
+  if not Result then
+    FreeMem(Buf);
+  RegCloseKey(Handle);
+end;//RegGetValue
+
+
+Function RegGetString(RootKey:cardinal;Subkey,Name:String;Default:String=''):String;
+var
+ Handle: HKEY;
+ DataType, DataSize: DWORD;
+begin
+ Result:=Default;
+ if RegOpenKeyEx(RootKey, PChar(SubKey), 0, KEY_QUERY_VALUE, Handle) <> ERROR_SUCCESS then Exit;
+ if (RegQueryValueEx(Handle, PChar(Name), nil, @DataType, nil, @DataSize) <> ERROR_SUCCESS) or (DataType <> REG_SZ) then
+   begin
+    RegCloseKey(Handle);
+    Exit;
+   end;
+ SetString(Result, nil, DataSize-1);
+ RegQueryValueEx(Handle, PChar(Name), nil, @DataType, PByte(@Result[1]), @DataSize);
+ RegCloseKey(Handle);
+end;//RegGetString
+
+Function RegGetInteger(RootKey:cardinal;Subkey,Name:String;Default:Integer=0):Integer;
+var Buf   : Pointer;
+    Size  : Integer;
+    VType : Cardinal;
+begin
+  Result := Default;
+  if not RegGetValue(RootKey, Subkey, Name, REG_DWORD, VType, Buf, Size) then exit;
+  if (VType = REG_DWORD) and (Size >= Sizeof(Word)) then Result := PWord(Buf)^;
+  FreeMem(Buf);
+end;//RegGetInteger

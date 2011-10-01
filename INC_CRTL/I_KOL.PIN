@@ -1,0 +1,64 @@
+function Int2Hex( Value : int64; Digits:Integer=0) : String;
+var d,m:Int64;
+Begin
+ Result:='';
+ d:=Value;
+ While d > 0 do
+  begin
+   m:=d mod 16;
+   d:=d div 16;
+   Result:=iif(m<10,chr(m+$30),chr(m+$41-10))+Result;
+  end;//wend
+ if length(result)<Digits then result:=StringOfChar('0',Digits-length(result))+Result;
+End;//int2hex
+
+function _StrSatisfy( S, Mask : PChar ) : Boolean;
+label next_char;
+begin
+next_char:
+  Result := True;
+  if (S^ = #0) and (Mask^ = #0) then exit;
+  if (Mask^ = '*') and (Mask[1] = #0) then exit;
+  if S^ = #0 then
+  begin
+    while Mask^ = '*' do
+          Inc( Mask );
+    Result := Mask^ = #0;
+    exit;
+  end;
+  Result := False;
+  if Mask^ = #0 then exit;
+  if Mask^ = '?' then
+  begin
+    Inc( S ); Inc( Mask ); goto next_char;
+  end;
+  if Mask^ = '*' then
+  begin
+    Inc( Mask );
+    while S^ <> #0 do
+    begin
+      Result := _StrSatisfy( S, Mask );
+      if Result then exit;
+      Inc( S );
+    end;
+    exit; // (Result = False)
+  end;
+  Result := S^ = Mask^;
+  Inc( S ); Inc( Mask );
+  if Result then goto next_char;
+end;
+
+function AnsiLowerCase(const S: string): string;
+var
+  Len: Integer;
+begin
+  Len := Length(S);
+  SetString(Result, PChar(S), Len);
+  if Len > 0 then CharLowerBuff(Pointer(Result), Len);
+end;
+
+function StrSatisfy( const S, Mask: String ): Boolean;
+begin
+  Result := _StrSatisfy( PChar( AnsiLowerCase( S ) ),
+                         PChar( AnsiLowerCase( Mask ) ) );
+end;

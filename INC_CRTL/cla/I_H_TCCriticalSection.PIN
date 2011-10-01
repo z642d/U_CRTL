@@ -1,0 +1,11 @@
+type TCCriticalSection = class
+private
+ FSection: TRTLCriticalSection;
+public
+ constructor Create;
+ destructor Destroy; override;
+ procedure Enter;
+ procedure Leave;
+ procedure TryEnter;
+end;//TCCriticalSection
+//Simple Critical section wrapper

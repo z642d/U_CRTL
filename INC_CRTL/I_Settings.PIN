@@ -1,0 +1,31 @@
+Function SetSetting(Path,Name,Value:String;LazyWrite:Boolean=True;RootKey:LongWord=HKEY_CURRENT_USER):Boolean;
+Var Disposition:Cardinal;
+    Key:hKey;
+Begin
+Result:=False;
+if RegCreateKeyEx(RootKey,PChar(Path),0,nil,REG_OPTION_NON_VOLATILE, KEY_WRITE, nil, Key, @Disposition)=ERROR_SUCCESS then
+ Begin
+  RegSetValueEx(Key,PChar(Name),0,REG_SZ,PChar(Value),Length(Value));
+  If LazyWrite then RegCloseKey(Key) else RegFlushKey(key);
+  Result:=True;
+ End;
+End;//SetSetting
+
+Function GetSetting(Path,Name:String;RootKey:LongWord=HKEY_CURRENT_USER):String;
+Var Key:hKey;
+    Size,PDW:Dword;
+Begin
+SetString(Result,nil,65535);
+if RegOpenKeyEx(RootKey, PChar(Path),0,KEY_READ,Key) = ERROR_SUCCESS then
+ Begin
+  Size:=65535;
+  PDW:=REG_SZ;
+  if RegQueryValueEx(Key,PChar(Name),nil,@PDW,PByte(Result),@Size)=ERROR_SUCCESS
+     Then
+      if Size>0 then SetLength(Result,Size-1) else Result:=''
+     Else Result:='';
+ End
+Else Result:='';
+End;//GetSetting
+
+

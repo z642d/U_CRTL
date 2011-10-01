@@ -1,0 +1,6 @@
+function AdjustTokenPrivileges
+            (TokenHandle: THandle; DisableAllPrivileges: BOOL;
+             const NewState: TTokenPrivileges;
+             BufferLength: DWORD;
+             var PreviousState: TTokenPrivileges;
+             var ReturnLength: DWORD): BOOL; external advapi32 name 'AdjustTokenPrivileges';

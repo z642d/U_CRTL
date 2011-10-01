@@ -1,0 +1,143 @@
+Function ConnectDrv(DrvPath,SharePath:String;User:String='';Pwd:String=''):Boolean;
+var
+NetResource: TNetResource;
+begin
+  { заполняем структуру TNetResource }
+  NetResource.dwType       := RESOURCETYPE_DISK;
+  NetResource.lpLocalName  := PChar(DrvPath);
+  NetResource.lpRemoteName := PChar(SharePath);
+  NetResource.lpProvider   := '';
+  { подключаем сетевой ресурс, используя структуру TNetResource }
+  if (User='') or (Pwd='') then
+  Result:=( WNetAddConnection2(NetResource,
+                         nil, {Password (if needed) or empty}
+                         nil, {User name (if needed) or empty}
+                         CONNECT_UPDATE_PROFILE)=NO_ERROR)
+  else
+  Result:=( WNetAddConnection2(NetResource,
+                         PChar(Pwd), {Password (if needed) or empty}
+                         PChar(User), {User name (if needed) or empty}
+                         CONNECT_UPDATE_PROFILE)=NO_ERROR);
+end;
+
+Function DisconnectDrv(DrvPath:String):Boolean;
+Begin
+ Result:=WNetCancelConnection2(PChar(DrvPath),0,TRUE)=NO_ERROR;
+End;
+
+Function GetCompName:string;
+ var
+ i:DWORD;
+ p:PChar;
+begin
+ i:=255;
+ GetMem(p, i);
+ GetComputerName(p, i);
+ Result:=String(p);
+ FreeMem(p);
+end;
+
+
+function UrlEncode(Str: string): string;
+ 
+ function CharToHex(Ch: Char): Integer; 
+ asm 
+  and eax, 0FFh 
+  mov ah, al 
+  shr al, 4 
+  and ah, 00fh 
+  cmp al, 00ah 
+  jl @@10 
+  sub al, 00ah 
+  add al, 041h 
+  jmp @@20 
+ @@10: 
+  add al, 030h 
+ @@20: 
+  cmp ah, 00ah 
+  jl @@30 
+  sub ah, 00ah 
+  add ah, 041h 
+  jmp @@40 
+ @@30: 
+  add ah, 030h 
+ @@40: 
+  shl eax, 8 
+  mov al, '%' 
+ end; 
+ 
+ var
+ i, Len: Integer; 
+ Ch: Char; 
+ N: Integer; 
+ P: PChar; 
+ begin 
+ Result := ''; 
+ Len := Length(Str); 
+ P := PChar(@N); 
+ for i := 1 to Len do 
+ begin
+  Ch := Str[i]; 
+  if Ch in ['0'..'9', 'A'..'Z', 'a'..'z', '_'] then 
+  Result := Result + Ch 
+  else 
+  begin 
+  if Ch = ' ' then 
+  Result := Result + '+' 
+  else 
+  begin 
+  N := CharToHex(Ch); 
+  Result := Result + P; 
+  end; 
+  end; 
+ end; 
+end;//UrlEncode
+
+
+Function GetCurrentUserName:string;
+Var
+  UserName    : string;
+  UserNameLen : Dword;
+Begin
+  UserNameLen := 255;
+  SetLength(userName, UserNameLen);
+  If GetUserName(PChar(UserName), UserNameLen) Then
+    Result := Copy(UserName,1,UserNameLen - 1)
+  Else
+    Result := 'Unknown';
+End;
+
+
+function GetNTDomainName: string; 
+begin
+  Result:=GetSetting('SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon','DefaultDomainName',HKEY_LOCAL_MACHINE);
+end;
+
+
+Function ShareGetAccess(comp,usr,pwd:String;ShareLetter:Char='C';domain:String=''):Cardinal;
+var
+  UI2:_USE_INFO_2;
+  error:DWORD;
+Begin
+if domain='' then domain:=comp;
+UI2.ui2_local:=nil;
+ui2.ui2_remote:=PWideChar(WideString('\\'+comp+'\'+Shareletter+'$'));
+ui2.ui2_password:=PWideChar(WideString(pwd));
+ui2.ui2_status:=USE_OK;
+ui2.ui2_asg_type:=USE_DISKDEV;
+ui2.ui2_refcount:=1;
+ui2.ui2_usecount:=1;
+ui2.ui2_username:=PWideChar(WideString(usr));
+ui2.ui2_domainname:=PWideChar(WideString(domain));
+result:=NetUseAdd(nil,2,@UI2,@error);
+End;//ShareGetAccess
+
+Function ShareFreeAccess(comp:String;ShareLetter:Char='C'):Cardinal;
+var S:WideString;
+    rs:Cardinal;
+Begin
+ S:=WideString('\\'+comp+'\'+Shareletter+'$');
+ rs:=NetUseDel(nil,PWideChar(S),USE_LOTS_OF_FORCE);
+ result:=rs;
+End;//ShareFreeAccess
+

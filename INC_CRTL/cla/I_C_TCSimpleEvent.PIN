@@ -1,0 +1,38 @@
+constructor TCSimpleEvent.Create;
+begin
+ fstate:=initialState;
+ fHandle:=CreateEvent(nil,true,fstate,nil);
+end;//Create
+
+destructor TCSimpleEvent.Destroy;
+begin
+ CloseHandle(fHandle);
+end;//Destroy
+
+function TCSimpleEvent.WaitFor;
+begin
+ fThIdWaitFor     :=GetCurrentThreadId;
+ fStrDataWaitFor  :=StrData;
+ result:=WaitForSingleObject(fHandle,TimeOut);
+ if result=wait_timeout then
+  begin
+   nop;
+  end;
+ fThIdWaitFor     :=0;
+end;//WaitFor
+
+procedure TCSimpleEvent.SetEvent;
+begin
+ fState           :=True;
+ fThIdSet         :=GetCurrentThreadId;
+ fStrDataSet      :=StrData;
+ Windows.SetEvent(fHandle);
+end;//SetEvent
+
+procedure TCSimpleEvent.ResetEvent;
+begin
+ fState           :=False;
+ fThIdReSet       :=GetCurrentThreadId;
+ fStrDataReset    :=StrData;
+ windows.ResetEvent(fHandle);
+end;//ResetEvent

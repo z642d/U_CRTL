@@ -1,0 +1,257 @@
+
+
+Function SMiLastError(toset:Boolean;newval:Integer=SMERR_SUCCESS):Integer;
+const LastErr:Integer=SMERR_SUCCESS;
+Begin
+ if toset then LastErr:=newval;
+ Result:=LastErr;
+End;//SMiLastError
+
+Function SMGLE:Integer;
+//getlasterror для строковых операций
+Begin
+ Result:=SMiLastError(false);
+ SMiLastError(true,SMERR_SUCCESS);
+End;//SMGLE
+
+Procedure SMSLE(E:Integer);
+Begin
+ SMiLastError(true,E);
+End;//SMSLE
+
+Function SMlli256Crop(n:String):String;
+//Отрежет ведущие нули у n
+var j:Integer;
+Begin
+Result:='';
+SMSLE(SMERR_ARGUMENT_EMPTY);
+ for j:=1 to length(n) do
+  Begin
+   if mid(n,j)<>#0 then
+    begin
+     result:=mid(n,j,length(n));
+     SMSLE(SMERR_SUCCESS);
+     exit;
+    end;//if
+  End;//for
+End;//lli256Crop
+
+Procedure SMlli256Expand(var n1,n2:String);
+//сравняет длины строк n1 и n2 ведущими нулями
+var MaxLen:Integer;
+Begin
+ MaxLen:=U_CRTL.Max(length(n1),length(n2));
+ n1:=StringOfChar(#0,MaxLen-length(n1))+n1;
+ n2:=StringOfChar(#0,MaxLen-length(n2))+n2;
+End;//SMlli256Expand
+
+Procedure SMlli256Normalize(var n1,n2:String);
+//Приводит n1 и n2 в оптимальный для сложения\вычитания вид
+begin
+ n1:=SMlli256Crop(n1);
+ n2:=SMlli256Crop(n2);
+ SMlli256Expand(n1,n2);
+end;//SMlli256Normalize
+
+Function SMlli256ValidateNotation(n:String;c:Char):Boolean;
+//Вернёт True, если n можно рассматривать как число в системе с основанием C
+var j:Integer;
+Begin
+ result:=true;
+ for j:=1 to length(n) do
+  if n[j]>c then
+   begin
+    result:=False;
+    SMSLE(SMERR_INCORRECT_NUMBER_NOTATION);
+    exit;
+   end;
+End;//SMlli256ValidateNotation
+
+Function SMlli256Compare(n1,n2:String):integer;
+//Вернёт 1, если первое больше, 0 - если равны, -1 - если второе больше
+var j:Integer;
+Begin
+ SMlli256Normalize(n1,n2);
+ Result:=0;
+ for j:=1 to length(n1) do
+   if n1[j]<>n2[j] then
+    begin
+     result:=iif(n1[j]>n2[j],1,-1);
+     exit;
+    end;
+End;//SMlli256Compare
+
+Function SMlli256Plus(n1,n2:String):String;
+//low level internal PLUS
+//n1,n2: items for addition addition in scale of notation 256
+//Низкоуровневое сложение чисел n1,n2 в системе счисления с основанием 256
+var j:Integer;
+    jd,jm :word;
+    pararslt:String;
+Begin
+Result:='';
+ SMlli256Normalize(n1,n2);
+ //Нормализация слагаемых
+ Result   :=StringofChar(#0,length(n1));
+ pararslt :=StringofChar(#0,length(n1));
+ //зануляем частное и остаток
+ for j:=length(n1) downto 1 do
+  begin
+   DivMod(ord(n1[j])+ord(n2[j]),256,jd,jm);
+   pararslt[j]:=chr(jd);
+   //Добавили в следующий разряд единицу - если она есть
+   result[j]:=chr(jm);
+  end;//for
+ if SMlli256Crop(pararslt)<>'' then Result:=SMlli256Plus(result,pararslt+#0);
+End;//SMlli256Plus
+
+
+Function SMlli256Minus(n1,n2:String):String;
+//Низкоуровневое вычитание чисел (n1-n2) в системе счисления с основанием 256
+//Возвращает пусто, если n1 < n2
+var j:Integer;
+    jd,jm :word;
+    pararslt:String;
+Begin
+ Result:='';
+ j:=SMlli256Compare(n1,n2);
+ if j<0 then
+  begin
+   SMSLE(SMERR_NEGATIVE_LOWLEVEL_SUBTRACTION);
+   exit;
+  end;
+ if j=0 then
+  begin
+   result:=#0;
+   exit;
+  end;//хотя этот result проживёт до первого crop...
+ SMlli256Normalize(n1,n2);
+ Result   :=StringofChar(#0,length(n1));
+ pararslt :=StringofChar(#0,length(n1));
+ for j:=length(n1) downto 1 do
+  begin
+   DivMod(256+ord(n1[j])-ord(n2[j]),256,jd,jm);
+   pararslt[j]:=chr((jd+1) mod 2);
+   //Если jd=0, значит надо вычесть 1 из следующего разряда
+   //jd бывает либо 0 либо 1, => инвертируем
+   result[j]:=chr(jm);
+  end;//for
+ if SMlli256Crop(pararslt)<>'' then Result:=SMlli256Minus(result,pararslt+#0);
+End;//SMlli256Minus
+
+Function SMlli256Mul(n1,n2:String):String;
+//Низкоуровневое умножение чисел n1,n2 в системе счисления с основанием 256
+var jn1,jn2:Integer;
+    jd,jm :word;
+    tmpn1:string;
+    tmprslt,tmppararslt:String;
+Begin
+ n1:=SMlli256Crop(n1);
+ n2:=SMlli256Crop(n2);
+//Умножаем n1 с добавлением 0 справа на каждую цифру n2
+ Result:='';
+ for jn2:=length(n2) downto 1 do
+  begin
+   tmpn1:=n1+StringofChar(#0,length(n2)-jn2);
+   tmprslt      :=StringofChar(#0,length(tmpn1));
+   tmppararslt  :=StringofChar(#0,length(tmpn1));
+   for jn1:=length(tmpn1) downto 1 do
+    begin
+     divmod(ord(tmpn1[jn1])*ord(n2[jn2]),256,jd,jm);
+     tmppararslt[jn1]:=chr(jd);
+     tmprslt[jn1]:=chr(jm);
+    end;//for jn1
+   tmprslt:=SMlli256Plus(tmprslt,tmppararslt+#0);
+   Result:=SMlli256Plus(result,tmprslt);
+  end;//for jn2
+End;//SMlli256Mul
+
+
+
+
+Function SMlli256DivMod(n1,n2:String; var Rslt,Rmndr:String):Boolean;
+//Низкоуровневое целочисленное деление n1 на n2
+//Частное - rslt, остаток - rmndr
+//В случае успеха вернёт True
+
+Procedure SMlli256PartialDivMod(_n1,_n2:String;var _Rslt,_Rmndr:String);
+//Подпроцедура для деления уголком - никаких проверок входных данных нет.
+//Предполагается, что n1 не более чем на разряд длиннее n2
+//rslt - 1 символ
+var j:Integer;
+Begin
+j:=0;
+_Rmndr:=_n1;
+ while SMlli256Compare(_Rmndr,_n2)>=0 do
+  begin
+   _Rmndr:=SMlli256Minus(_Rmndr,_n2);
+   j:=j+1;
+  end;//wend
+_Rslt:=chr(j);
+end;//SMlli256PartialDivMod
+//Main
+ var tmpn1,tmpnextletter:String;
+ j:Integer;
+Begin
+Result:=False;
+n1:=SMlli256Crop(n1);
+n2:=SMlli256Crop(n2);
+ if n2='' then
+  begin
+   SMSLE(SMERR_DIVISION_BY_ZERO);
+   exit; 
+  end;//0
+
+ tmpn1:=mid(n1,1,length(n2));
+ //начальное значение
+ SMlli256PartialDivMod(tmpn1,n2,tmpnextletter,tmpn1);
+ Rslt:=tmpnextletter;
+
+ for j:=length(n2)+1 to length(n1) do
+  begin
+   tmpn1:=tmpn1+n1[j];
+   SMlli256PartialDivMod(tmpn1,n2,tmpnextletter,tmpn1);
+   Rslt:=Rslt+tmpnextletter;
+  end;//for
+ Rmndr:=tmpn1; 
+End;//SMlli256DivMod
+
+
+Function SMlli256FFToAny(n:String;c:Char):String;
+//Перевод числа из 256ричной СС в любую из диапазона [2..255]
+//с - основание последовательности -1, то есть чтобы перевестись в 2чную сс надо указать 1
+var rmndr:String;
+begin
+ if c=#$ff then
+  begin
+   result:=n;
+   exit;
+  end;//if c=FF
+result:='';
+While SMlli256Crop(n)<>'' do
+ begin
+  SMlli256DivMod(n,chr(ord(c)+1),n,rmndr);
+  result:=rmndr+Result;
+ end;//wend;
+if result='' then result:=#0; 
+end;//SMlli256FFToAny
+
+Function SMlli256AnyToFF(n:String;c:Char):String;
+//Перевод числа из любой СС в 256ричную
+//с - основание последовательности -1, то есть чтобы перевестись в 2чную сс надо указать 1
+//Можно выхватить пустую строку в результате и SMERR_INCORRECT_NUMBER_NOTATION в SMGLE
+var j:Integer;
+    dgr:String;
+Begin
+if not SMlli256ValidateNotation(n,c) then   exit;
+n:=SMlli256Crop(n);
+
+dgr:='';
+result:='';
+for j:=length(n) downto 1 do
+ begin
+  dgr:=SMlli256Mul(dgr,chr(ord(c)+1));
+  if SMlli256Compare(dgr,#1)<0 then dgr:=#1;
+  result:=SMlli256Plus(result,SMlli256Mul(dgr,n[j]));
+ end;
+End;//SMlli256AnyToFF

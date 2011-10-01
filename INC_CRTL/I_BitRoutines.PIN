@@ -1,0 +1,50 @@
+Function IntToBit(Arg:Byte):String;overload;
+Var B:Byte;_TmpByte,j:Byte;
+Begin
+SetLength(Result,8);B:=Arg;
+For j:=7 downto 0 do
+ begin
+  _TmpByte:=b shr j;
+  if _TmpByte=1 then Result[8-j]:='1' else Result[8-j]:='0';
+  b:=b-(_TmpByte shl j);
+ end;//for
+End;
+
+Function IntToBit(Arg:Word):String;overload;
+Var _TmpByte,B:Word;
+    j:Byte;
+Begin
+SetLength(Result,16);
+B:=Arg;
+For j:=15 downto 0 do
+ begin
+  _TmpByte:=b shr j;
+  if _TmpByte=1 then Result[16-j]:='1' else Result[16-j]:='0';
+  b:=b-(_TmpByte shl j);
+ end;//for
+End;
+
+Function IntToBit(Arg:LongWord):String;overload;
+Var _TmpByte,B:LongWord;
+    j:Byte;
+Begin
+SetLength(Result,32);
+B:=Arg;
+For j:=31 downto 0 do
+ begin
+  _TmpByte:=b shr j;
+  if _TmpByte=1 then Result[32-j]:='1' else Result[32-j]:='0';
+  b:=b-(_TmpByte shl j);
+ end;//for
+End;
+
+Function IsBitsSet(Val,Bits:Cardinal):Boolean;
+Begin Result:=(Val or Bits)=Val; End;
+
+Function SetBits(Val,Bits:Integer;ToSet:Boolean):Integer;overload;
+Begin If ToSet then Result:=Val or Bits else Result:=Val and not Bits; End;
+Function SetBits(Val,Bits:Cardinal;ToSet:Boolean):Cardinal;overload;
+Begin If ToSet then Result:=Val or Bits else Result:=Val and not Bits; End;
+Function SetBits(Val,Bits:Byte;ToSet:Boolean):Byte;overload;
+Begin If ToSet then Result:=Val or Bits else Result:=Val and not Bits; End;
+

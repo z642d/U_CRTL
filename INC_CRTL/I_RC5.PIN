@@ -1,0 +1,181 @@
+
+type
+  TRC5Block = array[1..2] of LongWord;
+const RC5KeySize    =64;
+      RC5Rounds     = 12;
+      RC5BlockSize  = 8;
+//      RC5BufferSize = 2048;
+      RC5KeyLength  = 2 * (RC5Rounds + 1);
+
+      RC5P32 = $b7e15163;
+      RC5Q32 = $9e3779b9;
+
+  var RC5ScrambleTable:array[0..RC5KeyLength-1] of LongWord;
+
+////////////////////////////////////////////////////////////////////////////////
+
+function ROL(a, s: LongWord): LongWord;
+asm
+  mov    ecx, s
+  rol    eax, cl
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+
+function ROR(a, s: LongWord): LongWord;
+asm
+  mov    ecx, s
+  ror    eax, cl
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+
+procedure RC5InvolveKey(Akey:String;keyptr:PChar);
+var
+  TempKey : string;
+  i, j    : Integer;
+  K1, K2  : LongWord;
+begin
+ // Разворачивание ключа до длинны 64 символа
+ TempKey := AKey;
+ i := 1;
+ while ((Length(TempKey) mod RC5KeySize) <> 0) do
+   begin
+     TempKey := TempKey + TempKey[i];
+     Inc(i);
+   end;
+
+ // Now shorten the key down to one KeySize block by combining the bytes
+ i := 1;
+ j := 0;
+ while (i < Length(TempKey)) do
+   begin
+     Move((KeyPtr+j)^, K1, 4);
+     Move(TempKey[i], K2, 4);
+     K1 := ROL(K1, K2) xor K2;
+     Move(K1, (KeyPtr+j)^, 4);
+     j := (j + 4) mod RC5KeySize;
+     Inc(i, 4);
+   end;
+end;
+
+{ $R-,Q-}
+
+procedure RC5InitScrambleTable(var KeyPtr:PChar);
+var
+  i, j, k : Integer;
+  L       : array[0..15] of LongWord;
+  A, B    : LongWord;
+begin
+ // Copy the key into L
+ Move(KeyPtr^, L, rc5KeySize);
+
+ // Now initialize the RC5ScrambleTable table
+ RC5ScrambleTable[0] := RC5P32;
+ for i := 1 to rc5KeyLength-1 do
+   RC5ScrambleTable[i] := RC5ScrambleTable[i-1] + RC5Q32;
+
+ // Now scramble the RC5ScrambleTable table with the key
+ i := 0;
+ j := 0;
+ A := 0;
+ B := 0;
+ for k := 1 to 3*rc5KeyLength do
+   begin
+     A := ROL((RC5ScrambleTable[i] + A + B), 3);
+     RC5ScrambleTable[i] := A;
+     B := ROL((L[j] + A + B), (A + B));
+     L[j] := B;
+     i := (i + 1) mod rc5KeyLength;
+     j := (j + 1) mod 16;
+   end;
+end;
+
+procedure RC5Initialize(AKey: string);
+var keyptr:PChar;
+begin
+ GetMem(keyptr, rc5KeySize);
+ FillChar(keyptr^, rc5KeySize, #0);
+ RC5InvolveKey(AKey,keyptr);
+ RC5InitScrambleTable(keyptr);
+ FreeMem(keyptr);
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+
+function RC5EncryptBlock(var Block): Boolean;
+var
+  RC5Block : TRC5Block absolute Block;
+  i        : Integer;
+begin
+ Inc(RC5Block[1], RC5ScrambleTable[0]);
+ Inc(RC5Block[2], RC5ScrambleTable[1]);
+
+ for i := 1 to RC5Rounds do
+   begin
+     RC5Block[1] := ROL((RC5Block[1] xor RC5Block[2]), RC5Block[2]) + RC5ScrambleTable[2*i];
+     RC5Block[2] := ROL((RC5Block[2] xor RC5Block[1]), RC5Block[1]) + RC5ScrambleTable[2*i+1];
+   end;
+ Result := TRUE;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+
+function RC5DeccryptBlock(var Block): Boolean;
+var
+  RC5Block : TRC5Block absolute Block;
+  i        : Integer;
+begin
+ for i := RC5Rounds downto 1 do
+   begin
+     RC5Block[2] := ROR((RC5Block[2]-RC5ScrambleTable[2*i+1]), RC5Block[1]) xor RC5Block[1];
+     RC5Block[1] := ROR((RC5Block[1]-RC5ScrambleTable[2*i]),   RC5Block[2]) xor RC5Block[2];
+   end;
+ Dec(RC5Block[2], RC5ScrambleTable[1]);
+ Dec(RC5Block[1], RC5ScrambleTable[0]);
+ Result := TRUE;
+end;
+
+Function rc5Encrypt(S:String;key:String):String;
+var ptr:Integer;
+begin
+ Result:=S+StringOfChar(#0,(8-length(S) mod 8) mod 8)+Integer2String4(length(S))+Integer2String4(CRC32(S));
+ //добавляем до нужной длины нулями, пишем реальную длину и КС
+ RC5Initialize(key);
+ ptr:=1;
+ while ptr<length(result) do
+  begin
+   RC5EncryptBlock(result[ptr]);
+   inc(ptr,RC5BlockSize);
+  end;
+
+end;//rc5Encrypt
+
+Function rc5Decrypt(S:String;key:String):String;
+var ptr:Integer;
+    ts:String;
+    waitLen:Integer;
+begin
+ ts:=S;
+
+ RC5Initialize(key);
+ ptr:=1;
+ while ptr<length(ts) do
+  begin
+   RC5DeccryptBlock(ts[ptr]);
+   inc(ptr,RC5BlockSize);
+  end;
+
+ Result:='';
+ //Ожидаем длину как минимум 8 байт - длина и КС
+ if length(ts)<8 then exit;
+ WaitLen:=String42Integer(mid(ts,length(ts)-7,4));
+ if (waitlen>0) and (waitlen<=(length(ts)-8)) then
+  begin
+   result:=mid(ts,1,waitlen);
+   if Integer2String4(CRC32(result))<>mid(ts,length(ts)-3,4) then result:='';
+  end;
+end;//rc5Decrypt
+
+
+

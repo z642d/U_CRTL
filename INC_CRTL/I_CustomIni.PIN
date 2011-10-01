@@ -1,0 +1,171 @@
+Function KillComments(S:String):String;
+Var SA:TStrArray;
+    instrpt,j:Integer;
+Begin
+ SplitToParagraphs(S,SA);
+ For j:=0 to high(SA) do
+  Begin
+   instrpt:=instr(SA[j],';');
+   if instrpt<>0 then SA[j]:=Mid(SA[j],1,instrpt-1);
+  End;
+ For j:=0 to high(SA) do
+  Begin
+   instrpt:=instr(SA[j],'//');
+   if instrpt<>0 then SA[j]:=Mid(SA[j],1,instrpt-1);
+  End;
+Result:=Join(SA,vbcrlf);
+SplitToParagraphs(Result,SA,False);
+Result:=Join(SA,vbcrlf);
+End;
+
+Function LoadCustomIni(CfgString:String;var ParamNames:TStrArray;var ParamTypes:TIntArray;var ParamValues:TTVarArray):Boolean;
+Var SA,SA1:TStrArray;
+    instrpt,j:Integer;
+    CT:TVariant;
+    S:String;
+    label err;
+Begin
+ S:=CfgString;
+ S:=KillComments(S); 
+ if S='' then goto err;
+ SplitToParagraphs(S,SA);
+ //Переразбивка без коментариев
+ SetLength(ParamNames,0);
+ SetLength(ParamTypes,0);
+ SetLength(ParamValues,0);
+ //сброс результирующих массивов
+ For j:=0 to High(SA) do
+  Begin
+   SplitToWords(SA[j],SA1);
+   SA[j]:=Join(SA1);
+   //обеcпробеливаем строку
+    SplitByBrackets(SA[j],'$',':',SA1,true);
+    if Length(SA1)<>1 then goto err;
+    AppendElement(ParamNames,UCASE(SA1[0]));
+   //имя
+    SplitByBrackets(SA[j],':','=',SA1,true);
+    if Length(SA1)<>1 then goto err;
+     SA1[0]:=UCASE(SA1[0]);
+     instrpt:=LCI_ERRONEOUS;
+     if SA1[0]=LCITypeString 	then instrpt:=LCI_STRING;
+     if SA1[0]=LCITypeInt 	then instrpt:=LCI_INT;
+     if SA1[0]=LCITypeBool      then instrpt:=LCI_BOOL;
+     if SA1[0]=LCITypeFile	then instrpt:=LCI_FILE;
+    AppendElement(ParamTypes,instrpt);
+   //тип
+    SplitByBrackets(SA[j]+vbcrlf,'=',vbcrlf,SA1,true);
+    if Length(SA1)<>1 then goto err;
+    Case ParamTypes[High(ParamTypes)] of
+     LCI_STRING: CT.Str:=SA1[0];
+     LCI_INT:
+      Begin
+	Val(SA1[0], CT.Num.Int, instrpt);
+        if instrpt <> 0 then goto err;
+      End;
+     LCI_BOOL:
+      Begin
+       instrpt:=0;
+       if UCASE(SA1[0])='TRUE' then instrpt:=1;
+       if UCASE(SA1[0])='FALSE' then instrpt:=2;
+       Case instrpt of
+ 	1:CT.Bool:=True;
+        2:CT.Bool:=False;
+        else goto err;
+       End;//select
+      End;//LCI_BOOL
+     LCI_FILE:
+      Begin
+       CT.Str:=FileToString(SA1[0],#0); 
+      End;
+      else   goto err;
+     end;//select
+    AppendElement(ParamValues,CT);
+  //значение
+ End;//for
+ result:=true;
+ exit;
+err:
+ SetLength(ParamNames,0);
+ SetLength(ParamTypes,0);
+ SetLength(ParamValues,0);
+ result:=False;
+End;//LoadCustomIni
+
+
+Function IsCfgValid(CfgString:String):Boolean;
+Var s1:TStrArray;
+    s2:TIntArray;
+    s3:TTVarArray;
+Begin
+ Result:=LoadCustomIni(CfgString,s1,s2,s3);
+End;//IsCfgValid
+
+
+Function GetCfgStrVar(CfgString:String;ParamName:String;DefVal:String=''):String;
+Var s1:TStrArray;
+    s2:TIntArray;
+    s3:TTVarArray;
+    n:integer;
+Begin
+Result:=DefVal;
+ if not LoadCustomIni(CfgString,s1,s2,s3) then exit;
+ n:=IsElement(S1,UCASE(ParamName));
+ if n>-1 then
+   if (s2[n]=LCI_STRING) or (s2[n]=LCI_FILE) then
+    result:=S3[n].Str;
+End;//GetCfgStrVar
+
+Function GetCfgIntVar(CfgString:String;ParamName:String;DefVal:Integer=0):Integer;
+Var s1:TStrArray;
+    s2:TIntArray;
+    s3:TTVarArray;
+    n:integer;
+Begin
+Result:=DefVal;
+ if not LoadCustomIni(CfgString,s1,s2,s3) then exit;
+ n:=IsElement(S1,UCASE(ParamName));
+ if n>-1 then
+   if s2[n]=LCI_INT then
+    result:=S3[n].Num.Int;
+End;//GetCfgIntVar
+
+Function GetCfgBoolVar(CfgString:String;ParamName:String;DefVal:Boolean=False):Boolean;
+Var s1:TStrArray;
+    s2:TIntArray;
+    s3:TTVarArray;
+    n:integer;
+Begin
+Result:=DefVal;
+ if not LoadCustomIni(CfgString,s1,s2,s3) then exit;
+ n:=IsElement(S1,UCASE(ParamName));
+ if n>-1 then
+   if s2[n]=LCI_BOOL then
+    result:=S3[n].Bool;
+End;//GetCfgBoolVar
+
+
+Function GetRegularIniParam(Expr:String;ParamName:String;Delimiter:String='='):String;
+//вернёт значение параметра ParamName из содержимого регулярного ini-файла Expr:
+//кусок строки от Delimiter до ближайшего crlf. Если параметров с одинаковым именем
+//много, то возвращается последний. Если ни одного - пустая строка
+//Delimiter не должен входить в ParamName
+//Нечувствительно к регистру
+Var SA,SA1:TStrArray;
+    j:Integer;
+Begin
+ Expr:=KillComments(Expr);
+ Result:='';
+ SplitToParagraphs(Expr,SA,False);
+ for  j:=High(SA) downto 0 do
+   Begin
+    if StrSatisfy(UCASE(killSpaces(SA[j])),UCASE(ParamName)+'=*')  then
+     Begin
+       Split(SA[j],Delimiter,SA1,True);
+       if Length(SA1)=2 then
+        Begin
+         Result:=TruncateSpaces(SA1[1],TSpTT_DEL_BOTH);
+         Exit;
+        End;//if splitted by delim OK
+     End;//if found
+   End;//for
+End;//GetRegularIniParam

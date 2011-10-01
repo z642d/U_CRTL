@@ -1,0 +1,24 @@
+constructor TCCriticalSection.Create;
+begin
+ InitializeCriticalSection(FSection);
+end;//create
+
+destructor TCCriticalSection.Destroy;
+begin
+ DeleteCriticalSection(FSection);
+end;//destroy
+
+procedure TCCriticalSection.Enter;
+begin
+ EnterCriticalSection(FSection);
+end;//Enter
+
+procedure TCCriticalSection.Leave;
+begin
+ LeaveCriticalSection(FSection);
+end;//Leave
+
+procedure TCCriticalSection.TryEnter;
+begin
+ TryEnterCriticalSection(FSection);
+end;//TryEnter

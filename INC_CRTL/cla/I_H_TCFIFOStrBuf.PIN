@@ -1,0 +1,18 @@
+Type TCFIFOStrBuf=Class
+  fLock:TCCriticalSection;
+  Head:PStrList;
+  Tail:PStrList;
+  fCount:Integer;
+ public
+  Constructor Create;
+  Destructor Destroy;override;
+
+  Procedure PutMsg(S:String);virtual;
+  //push msg to buf
+  Function GetMsg:String;virtual;
+  //pop msg from buf
+  property Count:Integer read fCount;
+  //count of data in buf
+end;//TCFIFOStrBuf
+//Thread-Safe FIFO buffer for strings
+//Not stores empty strings!

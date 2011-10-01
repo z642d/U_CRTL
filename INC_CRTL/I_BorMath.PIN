@@ -1,0 +1,73 @@
+function Max(const A, B: Int64): Int64;
+begin
+  if A > B then
+    Result := A
+  else
+    Result := B;
+end;
+
+function Max(const A, B: Single): Single;
+begin
+  if A > B then
+    Result := A
+  else
+    Result := B;
+end;
+
+function Max(const A, B: Double): Double;
+begin
+  if A > B then
+    Result := A
+  else
+    Result := B;
+end;
+
+function Max(const A, B: Extended): Extended;
+begin
+  if A > B then
+    Result := A
+  else
+    Result := B;
+end;
+
+
+function Min(const A, B: Int64): Int64;
+begin
+  if A < B then
+    Result := A
+  else
+    Result := B;
+end;
+
+function Min(const A, B: Single): Single;
+begin
+  if A < B then
+    Result := A
+  else
+    Result := B;
+end;
+
+function Min(const A, B: Double): Double;
+begin
+  if A < B then
+    Result := A
+  else
+    Result := B;
+end;
+
+function Min(const A, B: Extended): Extended;
+begin
+  if A < B then
+    Result := A
+  else
+    Result := B;
+end;
+
+Function InBounds(val,min,max:Extended;ClosedBounds:Boolean=True):Boolean;
+Begin
+ if ClosedBounds
+  then Result:=(val<=max) and (val>=min)
+  else Result:=(val<max) and (val>min);
+End;
+
+

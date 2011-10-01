@@ -1,0 +1,51 @@
+Function XMLOpenTag(Tag:String;TagParam:String=''):String;
+Begin
+ if TagParam='' then Result:='<'+Tag+'>' else Result:='<'+Tag+' '+TagParam+'>';
+End;
+
+Function XMLCloseTag(Tag:String):String;
+Begin
+ Result:='</'+Tag+'>';
+End;
+
+Function XMLFindTag(XML,Tag:String;LoseTag:Boolean=True):String;
+Begin
+Result:=FindBracket(XML,'<'+Tag,XMLCloseTag(Tag),LoseTag,0,false);
+if LoseTag then Result:=Substr(Result,Instr(Result,'>')+1,Length(Result));
+End;
+
+Function XMLMakeTag(Val,Tag:String;ValIsSetOfTag:Boolean=False;TagParam:String=''):String;
+Begin
+ if ValIsSetOfTag
+  then
+   Begin
+    if StrSatisfy(Val,'*'+vbcrlf) then Val:=Substr(val,1,Length(val)-2);
+    result:=XMLOpenTag(tag,TagParam)+vbcrlf+VerticalIndent(Val,1)+vbcrlf+XMLCloseTag(tag)
+   End
+  else Result:=XMLOpenTag(tag,TagParam)+Val+XMLCloseTag(Tag);
+ if Val='' then Result:='<'+Tag+' '+TagParam+'/>';
+End;
+
+Function XMLMakeTag(Val:Integer;Tag:String;ValIsSetOfTag:Boolean=False;TagParam:String=''):String;
+Begin
+ if ValIsSetOfTag
+  then
+   Begin
+    result:=XMLOpenTag(tag,TagParam)+vbcrlf+VerticalIndent(int2Str(Val),1)+vbcrlf+XMLCloseTag(tag)
+   End
+  else Result:=XMLOpenTag(tag,TagParam)+int2Str(Val)+XMLCloseTag(Tag);
+End;
+
+
+Function XMLGetTagArray(XML,Tag:String;Var SA:TStrArray;LoseTag:Boolean=False):Integer;
+Begin
+ Result:=SplitByBrackets(XML,XMLOpenTag(Tag),XMLCloseTag(Tag),SA,LoseTag,False);
+End;
+
+Procedure XMLKillComments(var XML:String);
+var SA:TStrArray;
+    j:Integer;
+Begin
+SplitByBrackets(XML,'<!--','-->',SA,false,false);
+for j:=0 to high(SA) do replace(XML,SA[j],'');
+End;

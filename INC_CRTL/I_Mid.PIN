@@ -1,0 +1,230 @@
+(*Простые функции работы со строками*)
+Function PasStr(P:PChar):String;
+Begin
+ if p<>nil  then  Result:=p else result:='';
+End;
+
+function PtrToStr(lpBuffer:Pointer;cbBuf:Cardinal):string;
+begin
+  SetString(Result,PChar(lpBuffer),cbBuf);
+end;
+
+Function CopyFromStr(var S:String; const pos:integer; var buf; const count:Integer):Integer;
+Begin
+ result:=0;
+ if pos<1 then exit;
+ result:=length(S)-pos+1;
+ if result>count then result:=count;
+ Move(S[pos],buf,Result);
+End;//ReadFromString
+
+Function CutFromStr(var S:String; const pos:integer; var buf; const count:Integer):Integer;
+Begin
+ result:=CopyFromStr(S,pos,buf,count);
+ delete(S,pos,result);
+End;//ReadFromString
+
+Function PasteToStr(const AVar; Size: Longint): String;
+Begin
+  SetLength(Result,Size);
+  Move(AVar, Result[1], Size);
+end;
+
+
+Function Mid(Const S:String;Start:Integer):Char;OverLoad;
+Begin if (Start <= Length(S)) and (Start>0) then Result:=S[Start] else Result:=Chr(0); End;//Mid
+
+Function Mid(Const S:String;Start,V_Lenght:Integer):String;Overload;
+Begin Result:=copy(S,Start,V_Lenght); End;//Mid
+
+Function SubStr(S:String;Start,Finish:Integer):String;
+Begin
+Result:='';
+if (Start>0) and (Finish<=Length(S)) and (Start<=Finish) then
+  Result:=copy(S,Start,Finish-Start+1)
+End;//SubStr
+
+Function SubStrEx(S:String;Start,Finish:Integer):String;
+Var l:Integer;
+Begin
+l:=Length(S);
+Result:='';
+if ((Start<1) and (Finish<1)) or
+   ((Start>l) and (Finish>=l))then Exit;
+if (Start<1) then Start:=1;
+if (Start>l) then Start:=l;
+if (Finish<1) then Finish:=1;
+if (Finish>l) then Finish:=l;
+If Start<=Finish
+ then Result:=copy(S,Start,Finish-Start+1)
+ Else Result:=StrReverse(copy(S,Finish,Start-Finish+1));
+End;//SubStrEx 
+
+function UCase(const S: string): string;
+var
+  Len: Integer;
+begin
+  Len := Length(S);
+  SetString(Result, PChar(S), Len);
+  if Len > 0 then CharUpperBuff(Pointer(Result), Len);
+end;
+
+function LCase(const S: string): string;
+var
+  Len: Integer;
+begin
+  Len := Length(S);
+  SetString(Result, PChar(S), Len);
+  if Len > 0 then CharLowerBuff(Pointer(Result), Len);
+end;
+
+Function InStr(Expr,SbStr:String;Start:Integer=1;Finish:Integer=0;CaseSensitive:Boolean=True):Integer;
+Var L:Integer;
+Begin
+If not(CaseSensitive) then
+ Begin
+  Expr:=UCase(Expr);
+  SbStr:=UCase(SbStr);
+ End;
+If Finish<1 then Finish:=Length(Expr);
+If Start<1 then Start:=1;
+if ((Start=1) and (Finish=Length(Expr))) then
+ Begin
+  Result:=Pos(SbStr,Expr);
+  Exit;
+ End;
+Expr:=SubStrEx(Expr,Start,Finish);
+if Start>Finish then
+begin
+ SbStr:=StrReverse(SbStr);
+End;
+L:=Pos(SbStr,Expr);
+if l>0
+ then
+  if Start<=Finish
+   then Result:=Start-1+L
+   Else Result:=Start-L-Length(SbStr)+2
+ else
+  Result:=0;
+End;//InStr
+
+Function LastInstr(Expr,SbStr:String;CaseSensitive:Boolean=True):Integer;
+var j:Integer;
+Begin
+result:=0;
+ j:=instr(expr,SbStr,1,0,CaseSensitive);
+ while j>0 do
+  begin
+   result:=j;
+   j:=instr(expr,SbStr,result+1,0,CaseSensitive);
+  end;
+End;//LastInstr
+
+Function InStrCount(Expr,SubStr:String;Start:Integer=1;Finish:Integer=0;CaseSensitive:Boolean=True):Integer;
+var _InStrPos,LS:Integer;
+     SS:String;
+Begin
+_InStrPos:=0;
+If Finish<1 then Finish:=Length(Expr);
+Result:=_InStrPos;//NoWarn
+LS:=Length(Substr);
+if Start>Finish then Swp(Start,Finish);
+SS:=SubStrEx(Expr,Start,Finish);
+_InStrPos:=Instr(SS,Substr,Start,Finish,CaseSensitive);
+While (_InStrPos<>0) do
+ Begin
+ inc(Result);
+ Delete(SS,1,_InStrPos+LS-1);
+ _InStrPos:=Instr(SS,Substr,1,0,CaseSensitive);
+ End;
+End;//InStrCount
+
+Function StrReverse(Expr:String):String;
+Var EL1,EL,j:Integer;
+Begin
+EL:=Length(Expr);
+SetLength(Result,EL);
+EL1:=EL+1;
+For j:=EL downto 1 do Result[EL1-j]:=Expr[j];
+End;
+
+Function Quote(Expr,OpenQuote:String;CloseQuote:String=''):String;
+Begin
+If CloseQuote='' then CloseQuote:=OpenQuote;
+Result:=OpenQuote+Expr+CloseQuote;
+End;
+
+Function UnQuote(Expr,OpenQuote:String;CloseQuote:String=''):String;
+Begin
+If CloseQuote<>'' then Replace(Expr,CloseQuote,'');
+Replace(Expr,OpenQuote,'');
+Result:=Expr;
+End;
+
+Function TruncateSpaces(Expr:String;TruncType:Byte):String;
+Begin
+Result:=Expr;
+If Length(Expr)=0 then exit;
+If IsBitsSet(TruncType,TSpTT_DEL_START)  then
+ While mid(Expr,1)=#$20 do Delete(Expr,1,1);
+If IsBitsSet(TruncType,TSpTT_DEL_END)    then
+ While mid(Expr,Length(Expr))=#$20 do Delete(Expr,Length(Expr),1);
+If IsBitsSet(TruncType,TSpTT_DEL_DOUBLE) then
+ While instr(Expr,#$20#$20)>0 do delete(Expr,instr(Expr,#$20#$20),1);
+
+if IsBitsSet(TruncType,TSpTT_DEL_TABS) then
+ Begin
+  If IsBitsSet(TruncType,TSpTT_DEL_START)  then
+   While mid(Expr,1)=#$9 do Delete(Expr,1,1);
+  If IsBitsSet(TruncType,TSpTT_DEL_END)    then
+   While mid(Expr,Length(Expr))=#$9 do Delete(Expr,Length(Expr),1);
+  If IsBitsSet(TruncType,TSpTT_DEL_DOUBLE) then
+   While instr(Expr,#$9#$9)>0 do delete(Expr,instr(Expr,#$9#$9),1);
+ End;
+
+if IsBitsSet(TruncType,TSpTT_DEL_CRLF) then
+ Begin
+  If IsBitsSet(TruncType,TSpTT_DEL_START)  then
+   While mid(Expr,1,2)=vbcrlf do Delete(Expr,1,2);
+  If IsBitsSet(TruncType,TSpTT_DEL_END)    then
+   While mid(Expr,Length(Expr)-1,2)=vbcrlf do Delete(Expr,Length(Expr)-1,2);
+  If IsBitsSet(TruncType,TSpTT_DEL_DOUBLE) then
+   While instr(Expr,vbcrlf+vbcrlf)>0 do delete(Expr,instr(Expr,vbcrlf+vbcrlf),2);
+ End;
+
+If Expr<>Result then Result:=TruncateSpaces(Expr,TruncType);
+End;
+
+Function ChArr2String(var C:TChArray):String;
+Begin
+if length(c)=0 then
+ Begin
+  Result:='';
+  exit;
+ End;
+Result:=PasStr(PChar(c));
+SetLength(Result,Length(c));
+End;
+
+
+
+Procedure Str2ByteArr(S:String;var B:TByteArray);
+Var l:Integer;
+Begin
+ l:=Length(S);
+ SetLength(B,l);
+ CopyMemory(@(b),@(S),l);
+End;
+
+Procedure Str2ChArr(S:String;var B:TCHArray);
+Var l:Integer;
+Begin
+ l:=Length(S);
+ SetLength(B,l);
+ CopyMemory(@(b),@(S),l);
+End;
+
+Function StrEq(S1,S2:String;CaseSens:Boolean=False):Boolean;
+Begin
+ if casesens then result:=s1=s2 else result:=UCASE(S1)=UCASE(S2);
+End;

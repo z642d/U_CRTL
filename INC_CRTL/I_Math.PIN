@@ -1,0 +1,642 @@
+
+Function Char2Byte(Ch:Char):Byte;
+Begin
+Case ORD(Ch) of
+$30..$39:Result:=ORD(Ch)-$30;
+$41..$46:Result:=ORD(Ch)-$37;
+else Result:=$20;
+End;//Select
+End;
+
+Function Byte2Char(B:Byte):Char;
+Begin
+Case B of
+0..9:Result:=Chr(B+$30);
+10..15:Result:=Chr(B+$37);
+else Result:=Chr(0);
+end;
+End;
+
+Function Tetr2Str(Tetr:Byte):String;
+//Возвращает тетраду как битовую строку
+Begin
+if tetr=32 then begin result:=NUM_DELIM; exit;end;
+If (Tetr or 8)=Tetr then Result:='1' else Result:='0';
+If (Tetr or 4)=Tetr then Result:=Result+'1' else Result:=Result+'0';
+If (Tetr or 2)=Tetr then Result:=Result+'1' else Result:=Result+'0';
+If (Tetr or 1)=Tetr then Result:=Result+'1' else Result:=Result+'0';
+End;
+
+Function Str2Tetr(Str:String):Char;
+//Выделяет "1" в первых 4х символах строки и возвращает тетраду
+var B:Byte;
+Begin
+b:=0;
+If Str[1]='1' then B:=B+8;
+If Str[2]='1' then B:=B+4;
+If Str[3]='1' then B:=B+2;
+If Str[4]='1' then B:=B+1;
+case B of
+0..9:Result:=Chr($30+B);
+10..15:Result:=Chr($37+B);
+else result:=#0;
+end;
+End;
+
+Function Tri2Str(Tetr:Byte):String;
+//Возвращает триаду как битовую строку
+Begin
+if tetr=32 then begin result:=NUM_DELIM; exit;end;
+If (Tetr or 4)=Tetr then Result:='1' else Result:='0';
+If (Tetr or 2)=Tetr then Result:=Result+'1' else Result:=Result+'0';
+If (Tetr or 1)=Tetr then Result:=Result+'1' else Result:=Result+'0';
+End;
+
+Function Str2Tri(Str:String):Char;
+//Выделяет "1" в первых 3х символах строки и возвращает тетраду
+var B:Byte;
+Begin
+b:=0;
+If Str[1]='1' then B:=B+4;
+If Str[2]='1' then B:=B+2;
+If Str[3]='1' then B:=B+1;
+Result:=Chr($30+B);
+End;
+
+
+Procedure AdjustNumDelims(var Expr:String);
+var j:Integer;
+Begin
+For j:=1 to Length(NUM_POSSIBLE_DELIM) do
+  Replace(Expr,NUM_POSSIBLE_DELIM[j],NUM_DELIM);
+End;
+
+Function MinNumeration(Expr:String):Byte;
+var L,J:Integer;
+Begin
+AdjustNumDelims(Expr);
+L:=Length(Expr);
+if L>0 then if Expr[1]=NUM_MINUS then
+                                 Begin
+                                 delete(Expr,1,1);
+                                 L:=Length(Expr);
+                                 End;
+If InStrCount(Expr,NUM_DELIM)>1 then
+ Begin
+  Result:=NUM_UNKNOWN;
+  exit;
+ End;//Выход в случае более одного разделителя целой и дробной части
+Result:=NUM_BIN;
+For j:=1 to L do
+ Begin
+  Case ord(Expr[j]) of
+  Ord(NUM_DELIM)    : ;//Ничего не делаем
+  ORD('0')..ORD('1'): ;
+  ORD('2')..ORD('7'): if (result > NUM_OCT) then Result:=NUM_OCT;
+  ORD('8')..ORD('9'): if (result > NUM_DEC) then Result:=NUM_DEC;
+  ORD('A')..ORD('F'): Result:=NUM_HEX;
+  Else
+    Begin
+     Result:=NUM_UNKNOWN;
+     exit;
+    End;
+  End;//Select;
+ End;//For
+End;//MinNumeration
+
+Function IsBelong2Num(Expr:String;Numeration:Byte):Boolean;
+Begin
+Result:=MinNumeration(Expr)>=Numeration;
+End;//IsBelong2Num
+
+Function TruncateZeros(Expr:String):String;
+Var Minus:String;
+Begin
+{$BOOLEVAL OFF}
+AdjustNumDelims(Expr);
+if Length(Expr)>0 then if Expr[1]=NUM_MINUS then
+                                  Begin
+                                  delete(Expr,1,1);
+                                  Minus:=NUM_MINUS;
+                                  End
+                                  else Minus:='';
+While (length(Expr)>0) and (Expr[1]='0') do delete(Expr,1,1);
+//убираем нули в начале
+if (Expr='') then Expr:='0';
+if (Expr[1]=NUM_DELIM) then Expr:='0'+Expr;
+//добавляем 0 перед мантиссой
+if instr(Expr,Num_Delim)<>0 then
+ Begin
+  While Expr[Length(Expr)]='0' do delete(Expr,Length(Expr),1);
+  //убираем нули в конце
+  if instr(Expr,Num_Delim)=Length(Expr) then delete(Expr,Length(Expr),1);
+ End;
+Result:=Minus+Expr;
+End;
+
+
+(*
+F/T  2  8  10 16
+ 2  *   X  o  X
+ 8  X  *   o  =
+10  o  o  *   o
+16  X  =  o  *
+o- не написаны
+х-без поддержки дробей
+Х-с поддержкой дробей
+=-комбинация других преобразований
+*)
+
+Function Num2Num(Expr:String;PrevNum,NeedNum:Byte):String;
+Var j,LE:Integer;
+ E1,E2:String;
+ Minus:String;
+Begin
+Result:='';
+if Length(Expr)>0 then if Expr[1]=NUM_MINUS then
+                                  Begin
+                                  delete(Expr,1,1);
+                                  Minus:=NUM_MINUS;
+                                  End
+                                  else Minus:='';
+
+If not IsBelong2Num(Expr,PrevNum) then exit;
+If PrevNum=NeedNum then exit;
+IF (PrevNum<NUM_HEX) or (PrevNum>NUM_BIN) or
+   (NeedNum<NUM_HEX) or (NeedNum>NUM_BIN) then Exit;
+Expr:=TruncateZeros(Expr);
+LE:=Length(Expr);
+
+Case PrevNum of
+NUM_HEX:
+ Case NeedNum of
+  NUM_DEC: UC;
+  NUM_OCT: Result:=Num2Num(Num2Num(Expr,NUM_HEX,NUM_BIN),NUM_BIN,NUM_OCT);
+  NUM_BIN:
+    If instr(Expr,NUM_DELIM)=0
+       then For j:=1 to LE do Result:=Result+Tetr2Str(Char2Byte(Expr[j]))
+       else
+        Begin
+         E1:=Mid(Expr,1,Instr(Expr,NUM_DELIM)-1);
+         E2:=Mid(Expr,Instr(Expr,NUM_DELIM)+1,Length(Expr));
+         For j:=1 to Length(E1) do Result:=Result+Tetr2Str(Char2Byte(E1[j]));
+         Result:=Result+NUM_DELIM;
+         For j:=1 to Length(E2) do Result:=Result+Tetr2Str(Char2Byte(E2[j]));
+        End;
+ End;//Select NeedNum
+NUM_DEC:UC;
+NUM_OCT:
+ Case NeedNum of
+ NUM_HEX: Result:=Num2Num(Num2Num(Expr,NUM_OCT,NUM_BIN),NUM_BIN,NUM_HEX);
+ NUM_DEC: UC;
+ NUM_BIN:
+   If instr(Expr,NUM_DELIM)=0
+      then  For j:=1 to LE do Result:=Result+Tri2Str(Char2Byte(Expr[j]))
+      else
+       Begin
+         E1:=Mid(Expr,1,Instr(Expr,NUM_DELIM)-1);
+         E2:=Mid(Expr,Instr(Expr,NUM_DELIM)+1,Length(Expr));
+         For j:=1 to Length(E1) do Result:=Result+Tri2Str(Char2Byte(E1[j]));
+         Result:=Result+NUM_DELIM;
+         For j:=1 to Length(E2) do Result:=Result+Tri2Str(Char2Byte(E2[j]));
+       End;
+ End;//Select NeedNum
+NUM_BIN:
+ Case NeedNum of
+  NUM_HEX:
+    Begin
+     Expr:=StringOfChar('0',4-(LE mod 4))+Expr;
+     LE:=Length(Expr);
+     If instr(Expr,NUM_DELIM)=0 then
+       For j:=1 to (LE div 4) do Result:=Result+Str2Tetr(Mid(Expr,(j-1)*4+1,4))
+      else
+       Begin
+         E1:=Mid(Expr,1,Instr(Expr,NUM_DELIM)-1);
+         E2:=Mid(Expr,Instr(Expr,NUM_DELIM)+1,Length(Expr));
+         E1:=StringOfChar('0',4-(Length(E1) mod 4))+E1;
+         E2:=E2+StringOfChar('0',4-(Length(E2) mod 4));
+         For j:=1 to (Length(E1) div 4) do Result:=Result+Str2Tetr(Mid(E1,(j-1)*4+1,4));
+         Result:=Result+NUM_DELIM;
+         For j:=1 to (Length(E2) div 4) do Result:=Result+Str2Tetr(Mid(E2,(j-1)*4+1,4));
+       End;
+    End;
+  NUM_DEC:UC;
+  NUM_OCT:
+    Begin
+     Expr:=StringOfChar('0',3-(LE mod 3))+Expr;
+     LE:=Length(Expr);
+     If instr(Expr,NUM_DELIM)=0
+        then For j:=1 to (LE div 3) do Result:=Result+Str2Tri(Mid(Expr,(j-1)*3+1,3))
+        else
+         Begin
+          E1:=Mid(Expr,1,Instr(Expr,NUM_DELIM)-1);
+          E2:=Mid(Expr,Instr(Expr,NUM_DELIM)+1,Length(Expr));
+          E1:=StringOfChar('0',3-(Length(E1) mod 3))+E1;
+          E2:=E2+StringOfChar('0',3-(Length(E2) mod 3));
+          For j:=1 to (Length(E1) div 3) do Result:=Result+Str2Tri(Mid(E1,(j-1)*3+1,3));
+          Result:=Result+NUM_DELIM;
+          For j:=1 to (Length(E2) div 3) do Result:=Result+Str2Tri(Mid(E2,(j-1)*3+1,3));
+        End;
+    End;
+ End;//Select NeedNum
+End;//Select PrevNum
+Result:=Minus+TruncateZeros(Result);
+End;//Num2Num
+
+Procedure AlignNum(var OP1,OP2:String);
+var M1,M2,op11,op12,op21,op22:String;
+    L1,L2:Integer;
+Begin
+M1:='';
+M2:='';
+if Length(OP1)>0
+   then if OP1[1]=NUM_MINUS
+           then
+            Begin
+             M1:=NUM_MINUS;
+             delete(OP1,1,1);
+            End;
+if Length(OP2)>0
+   then if OP2[1]=NUM_MINUS
+           then
+            Begin
+             M2:=NUM_MINUS;
+             delete(OP2,1,1);
+            End;
+
+if instr(op1,NUM_DELIM)>0
+   then
+    Begin
+    OP11:=Mid(op1,1,instr(op1,NUM_DELIM)-1);
+    OP12:=Mid(op1,instr(op1,NUM_DELIM)+1,Length(op1));
+    End
+   else
+    Begin
+     OP11:=OP1;
+     OP12:='';
+    End;
+if instr(op2,NUM_DELIM)>0
+   then
+    Begin
+    OP21:=Mid(op2,1,instr(op2,NUM_DELIM)-1);
+    OP22:=Mid(op2,instr(op2,NUM_DELIM)+1,Length(op2));
+    End
+   else
+    Begin
+     OP21:=OP2;
+     OP22:='';
+    End;
+L1:=Length(Op11);
+L2:=Length(op21);
+If L1>L2 then OP21:=StringOfChar('0',L1-L2)+OP21;
+If L1<L2 then OP11:=StringOfChar('0',L2-L1)+OP11;
+L1:=Length(Op12);
+L2:=Length(op22);
+If L1>L2 then OP22:=OP22+StringOfChar('0',L1-L2);
+If L1<L2 then OP12:=OP12+StringOfChar('0',L2-L1);
+OP1:=M1+OP11+NUM_DELIM+OP12;
+OP2:=M2+OP21+NUM_DELIM+OP22;
+End;//Procedure AlignNum(var OP1,OP2:String);
+
+Function Compare(OP1,OP2:String):Integer;
+Var Coeff,J:Integer;
+Begin
+Result:=0;
+AdjustNumDelims(OP1);AdjustNumDelims(OP2);
+OP1:=TruncateZeros(OP1);OP2:=TruncateZeros(OP2);
+AlignNum(OP1,OP2);
+if (OP1[1]=NUM_MINUS) and (OP2[1]<>NUM_MINUS) then
+   Begin
+    Result:=CMP_SECONDMORE;
+    Exit;
+   End;
+if (OP1[1]<>NUM_MINUS) and (OP2[1]=NUM_MINUS) then
+   Begin
+    Result:=CMP_FIRSTMORE;
+    Exit;
+   End;
+if (OP1[1]=NUM_MINUS) and (OP2[1]=NUM_MINUS) then
+   Begin
+    Coeff:=-1;
+    Delete(OP1,1,1);
+    Delete(OP2,1,1);
+   End
+   else Coeff:=1;
+ FOR J:=1 to Length(OP1) do
+     if Char2Byte(OP1[j])=Char2Byte(OP2[j]) then
+        else
+         Begin
+          if Char2Byte(OP1[j])>Char2Byte(OP2[j]) then Result:=CMP_FIRSTMORE;
+          if Char2Byte(OP1[j])<Char2Byte(OP2[j]) then Result:=CMP_SECONDMORE;
+          Result:=Result*Coeff;
+          exit;
+         End;
+End;//compare
+
+Function ChangeSign(Expr:String):String;
+Begin
+If Length(Expr)>0 then if Expr[1]=NUM_MINUS
+                       then Delete(Expr,1,1)
+                       else Expr:=NUM_MINUS+Expr;
+Result:=Expr;
+End;//ChangeSign
+
+
+Function Operation(OP1,OP2:String;Num1,Num2,OPKind:Byte):String;
+var reg,n,j,i:Integer;
+    TempRslt,Correction:String;
+Begin
+AdjustNumDelims(OP1);AdjustNumDelims(OP2);
+Result:='';
+Correction:='';
+if not(IsBelong2Num(OP1,NUM1)) or not(IsBelong2Num(OP2,NUM2)) then exit;
+if num1<>num2 then
+   begin
+    OP1:=Num2Num(OP1,Num1,NUM_HEX);
+    OP2:=Num2Num(OP2,Num2,NUM_HEX);
+    num1:=NUM_HEX;
+   end;
+OP1:=TruncateZeros(OP1);OP2:=TruncateZeros(OP2);
+Case OPKind of
+OP_PLUS:
+ Begin
+  AlignNum(OP1,OP2);
+  Reg:=0;
+//-
+if (OP1[1]=NUM_MINUS) and (OP2[1]=NUM_MINUS) then
+   Begin
+    Correction:=NUM_MINUS;
+    Delete(OP1,1,1);
+    Delete(OP2,1,1);
+   End;
+If (OP1[1]=NUM_MINUS) and (OP2[1]<>NUM_MINUS) then
+   Begin
+    Delete(OP1,1,1);
+    Result:=Operation(OP2,OP1,Num1,Num2,OP_MINUS);
+    Exit;
+   End;
+If (OP1[1]<>NUM_MINUS) and (OP2[1]=NUM_MINUS) then
+   Begin
+    Delete(OP2,1,1);
+    Result:=Operation(OP1,OP2,Num1,Num2,OP_MINUS);
+    Exit;
+   End;
+//-
+  for j:=Length(Op1) downto 1 do
+    Begin
+     if OP1[j]=NUM_DeliM then Result:=NUM_DeliM+Result
+       Else
+        Begin
+         n:=Char2Byte(OP1[j])+Char2Byte(OP2[j])+reg;
+         Reg:=n div NUM_BASE[NUM1];
+         Result:=Byte2Char(n mod NUM_BASE[NUM1])+Result;
+        end;
+    End;
+  Result:=Byte2Char(reg)+Result;
+ End;//OP_PLUS
+OP_MINUS:
+ Begin
+  AlignNum(OP1,OP2);
+  Reg:=0;
+//-
+if (OP1[1]=NUM_MINUS) and (OP2[1]<>NUM_MINUS) then
+   Begin
+    Result:=NUM_MINUS+Operation(ChangeSign(op1),op2,Num1,Num2,OP_PLUS);
+    Exit;
+   End;
+if (OP1[1]<>NUM_MINUS) and (OP2[1]=NUM_MINUS) then
+   Begin
+    Result:=Operation(op1,ChangeSign(op2),Num1,Num2,OP_PLUS);
+    Exit;
+   End;
+If (OP1[1]=NUM_MINUS) and (OP2[1]=NUM_MINUS) then
+   Begin
+    Result:=Operation(ChangeSign(op2),ChangeSign(OP1),Num1,Num2,OP_MINUS);
+    exit;
+   End;
+If Compare(OP1,OP2)=CMP_SecondMore then
+   Begin
+   Result:=NUM_MINUS+Operation(op2,op1,Num1,Num2,OP_MINUS);
+   Exit; 
+   End;
+//-
+  for j:=Length(Op1) downto 1 do
+    Begin
+     if OP1[j]=NUM_DeliM then Result:=NUM_DeliM+Result
+       Else
+        Begin
+         n:=Char2Byte(OP1[j])-Char2Byte(OP2[j])+reg;
+         if n<0 then
+          Begin
+           Reg:=-1;
+           n:=n+NUM_BASE[NUM1];
+           Result:=Byte2Char(n mod NUM_BASE[NUM1])+Result;
+          End
+         Else
+          Begin
+           Reg:=0;
+           Result:=Byte2Char(n mod NUM_BASE[NUM1])+Result;
+          End;
+        end;
+    End;
+  If reg=-1 then Result:=NUM_MINUS+Result;
+ End;//OP_MINUS
+OP_MULTIPLY:
+ Begin
+  Reg:=0;
+  //-
+  if (OP1[1]=NUM_MINUS) then
+   Begin
+    Correction:=NUM_MINUS;
+    ChangeSign(OP1);
+   End;
+  if (OP2[1]=NUM_MINUS) then if Correction=NUM_MINUS
+                             then
+                             Begin
+                             Correction:='';
+                             ChangeSign(OP2);
+                             End
+                             else Correction:=NUM_MINUS;
+  //-
+  For j:=Length(OP1) downto 1 do
+   Begin
+    TempRslt:='';
+    For i:=Length(OP2) downto 1 do
+     Begin
+      if OP2[i]=NUM_DeliM then TempRslt:=NUM_DeliM+TempRslt
+      Else
+       Begin
+        n:=Char2Byte(OP1[j])*Char2Byte(OP2[i])+reg;
+        Reg:=n div NUM_BASE[NUM1];
+        TempRslt:=Byte2Char(n mod NUM_BASE[NUM1])+TempRslt;
+       End;//Else
+     End;//For i
+   TempRslt:=Byte2Char(reg)+TempRslt;
+
+   End;//for j
+ End;//OP_MULTIPLY
+End;//Select
+Result:=Correction+TruncateZeros(Result);
+End;//Operation
+
+
+Function PrimitiveValue(bracket:String):String;
+var SA:TStrArray;
+Begin
+ Result:='E';
+ Split(bracket,'==',SA,true);
+ if length(SA)=2 then
+  Begin
+   result:=iif(StrSatisfy(UCASE(SA[0]),UCASE(SA[1])),StrTrue,StrFalse);
+   exit;
+  End;//==
+
+ Split(bracket,'!=',SA,true);
+ if length(SA)=2 then
+  Begin
+   result:=iif(not StrSatisfy(UCASE(SA[0]),UCASE(SA[1])),StrTrue,StrFalse);
+   exit;
+  End;//!=
+End;
+
+
+Function OpsToBoolean(bracket:String;onError:String='E'):String;
+var SA:TStrArray;
+    j:Integer;
+    token:byte;
+Begin
+ result:=onError;
+ bracket:=KillSpaces(bracket);
+ replace(bracket,'&&',' && ');
+ replace(bracket,'||',' || ');
+ SplitToWords(bracket,SA);
+ if length(SA)>0 then
+  Begin
+   token:=0;
+   for j:=0 to high(SA) do
+    Begin
+     if (SA[j]='&&') or (SA[j]='||') then
+       Begin
+        if SA[j]='&&' then token:=1;
+        if SA[j]='||' then token:=2;
+       End
+      else
+       Begin
+         case token of
+          0:result:=SA[j];
+          1:result:=iif((result=StrTrue) and (SA[j]=StrTrue),StrTrue,strfalse) ;
+          2:result:=iif((result=StrTrue) or (SA[j]=StrTrue),StrTrue,strfalse) ;
+         end;//
+       End;//!token
+    End;//for
+  End;
+End;//
+
+
+
+function ParseOPS(bracket:String):String;
+var S:String;
+Begin
+ S:=FindFirstInnerBracket(bracket,'[',']');
+ While S<>'' do
+  Begin
+   replace(bracket,S,OpsToBoolean(UnQuote(S,'[',']')));
+   S:=FindFirstInnerBracket(bracket,'[',']');
+  End;
+ result:=OpsToBoolean(bracket);
+End;
+
+
+
+function ParseBracketBlock(bracket:String):String;
+Var SA:TStrArray;
+    j:Integer;
+Begin
+ bracket:=KillSpaces(bracket);
+
+ Replace(bracket,'[',' [ ');
+ Replace(bracket,']',' ] ');
+
+ SplittoWords(bracket,SA);
+ for j:=0 to high(SA) do
+  if strsatisfy(SA[j],'*==*') or strsatisfy(SA[j],'*!=*') then
+   SA[j]:=PrimitiveValue(SA[j]);
+
+ bracket:=killspaces(join(SA));
+ //msgbox(bracket);
+//!!
+ result:=UCAse(ParseOPS(bracket));
+End;//ParseBracketBlock
+
+
+procedure Factorize(i:Int64;var da:TIntArray);
+var j:Integer;
+    divfound:Boolean;
+    sq:extended;
+Begin
+ setlength(da,0);
+ while i>1 do
+  begin
+   j:=1;
+   divfound:=false;
+   sq:=i;
+   sq:=sqrt(sq);
+   while j<=sq do
+    begin
+     inc(j);
+     if (i mod j)=0 then
+      begin
+       AppendElement(da,j);
+       i:=i div j;
+       divfound:=true;
+       break;
+      end;//if
+    end;//while j<=i
+   if not divfound then
+    begin
+     appendElement(da,i);
+     break;
+    end;
+  end;//while i<>1
+//без 1
+End;//Factorize
+
+
+Procedure GetAllDivisors(i:int64;var ria:TIntArray);
+var j,k:Integer;
+    combos:Integer;
+    tstdiv:Int64;
+var ia:TIntArray;
+begin
+ factorize(i,ia);
+ combos:=(2 shl length(ia)) - 1;
+ setlength(ria,0);
+ for j:=0 to combos do
+  begin
+   tstdiv:=1;
+   for k:=0 to length(ia)-1 do
+    if isbitsset(j,2 shl k) then tstdiv:=tstdiv*ia[k];
+   if iselement(ria,tstdiv)=-1 then AppendElement(ria,tstdiv);
+  end;
+end;//GetAllDivisors
+
+function sum(ia:Array of Int64):Int64;
+var j:Integer;
+begin
+result:=0;
+ for j:=0 to high(ia) do result:=result+ia[j];
+end;//sum
+
+Function avg(ia:Array of Int64):Double;
+var j:Integer;
+begin
+result:=0;
+ for j:=0 to high(ia) do result:=result+(ia[j]/length(ia));
+end;//avg
+
+Function Product(ia:Array of Int64):Int64;
+var j:Integer;
+begin
+result:=1;
+ for j:=0 to high(ia) do result:=result*ia[j];
+end;

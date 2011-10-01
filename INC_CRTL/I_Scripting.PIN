@@ -1,0 +1,52 @@
+Function PlayScriptCommand(Cmd:String):Integer;
+var CA:TStrArray;
+    j:Integer;
+    TmpS:String;
+Begin
+Result:=0;
+  SplitToWords(Cmd,CA);
+  if CA[0]='SENDKEYS' then
+   Begin
+    TmpS:='';
+    for j:=1 to high(CA) do TmpS:=TmpS+CA[j]+' ';
+    Replace(TmpS,'"','');   
+    Sendkeys(TmpS);
+   End;//SendKeys
+  if CA[0]='DELAY' then
+   Begin
+    if high(ca)=1 then Delay(Str2Int(CA[1])) else Result:=2;
+   End;//Delay
+  If CA[0]='MSGBOX' then
+   Begin
+    TmpS:='';
+    for j:=1 to high(CA) do TmpS:=TmpS+CA[j]+' ';
+    Replace(TmpS,'"','');
+    Msgbox(TmpS,midver);
+   End;//MSGBOX
+End;//PlayScriptCommand
+
+Function PlayScript(Src:String):Integer;
+Var SA:TStrArray;
+    i,j:Integer;
+Begin
+Result:=0;
+If Src='' then exit;
+Src:=UCase(Src);
+Replace(Src,#$27#$27,#19#19);
+SplitToParagraphs(Src,SA);
+for j:=0 to high(SA) do
+ Begin
+  i:=Instr(SA[j],#$27);
+  if i>0 then SA[j]:=Mid(SA[j],1,i-1);
+ End;
+Join(SA,VbCrLf);
+Replace(Src,#19#19,#$27);
+SplitToParagraphs(Src,SA);
+//Удаление комментариев завершено
+For j:=0 to high(SA) do PlayScriptCommand(SA[j]);
+End;//PlayScript
+
+Procedure PlayScriptFile(FileName:String);
+Begin
+If FileExists(FileName) then PlayScript(FileToString(FileName)); 
+End;

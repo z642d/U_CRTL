@@ -1,0 +1,111 @@
+Function TriggerInt(Command:Integer;Value:Integer=0):Integer;
+Const TrigContent:Integer=0;
+Begin
+Case Command of
+0:Begin
+   Result:=TrigContent;
+   TrigContent:=Value;
+  End;
+else Result:=TrigContent;
+end;//Select
+End;
+
+Function TriggerStr(Command:Integer;Value:String=''):String;
+Const TrigContent:String='';
+Begin
+Case Command of
+0:Begin
+   Result:=TrigContent;
+   TrigContent:=Value;
+  End;
+else Result:=TrigContent;
+end;//Select
+End;
+
+Function TriggerBool(Command:Integer;Value:Boolean=False):Boolean;
+Const TrigContent:Boolean=False;
+Begin
+Case Command of
+0:Begin
+   Result:=TrigContent;
+   TrigContent:=Value;
+  End;
+else Result:=TrigContent;
+end;//Select
+End;
+
+
+Function FILOInt(Command:Integer;Value:Integer=0):Integer;
+Const Stack:TIntArray=nil;
+Begin
+Result:=0;
+Case Command of
+0:AppendElement(Stack,Value);
+1:If Length(Stack)>0 then
+   Begin
+    Result:=Stack[High(Stack)];
+    SetLength(Stack,High(Stack));
+   End;
+2:If Length(Stack)>0 then Result:=Stack[High(Stack)];
+3:TriggerInt(0,High(Stack));
+4:SetLength(Stack,0);
+end;//Select
+End;//FILOINT
+
+Function FILOStr(Command:Integer;Value:String=''):String;
+Const Stack:TStrArray=nil;
+Begin
+Result:='';
+Case Command of
+0:AppendElement(Stack,Value);
+1:If Length(Stack)>0 then
+   Begin
+    Result:=Stack[High(Stack)];
+    SetLength(Stack,High(Stack));
+   End;
+2:If Length(Stack)>0 then Result:=Stack[High(Stack)];
+3:TriggerInt(0,High(Stack));
+4:SetLength(Stack,0);
+end;//Select
+End;//FILOSTR
+
+Function FIFOInt(Command:Integer;Value:Integer=0):Integer;
+Const Stack:TIntArray=nil;
+var j:Integer;
+Begin
+Result:=0;
+Case Command of
+0:AppendElement(Stack,Value);
+1:If Length(Stack)>0 then
+   Begin
+    Result:=Stack[0];
+    For j:=1 to High(Stack) do Stack[j-1]:=Stack[j];
+    SetLength(Stack,High(Stack));
+   End;
+2:If Length(Stack)>0 then Result:=Stack[High(Stack)];
+3:TriggerInt(0,High(Stack));
+4:SetLength(Stack,0);
+end;//Select
+End;//FIFOINT
+
+
+Function FIFOStr(Command:Integer;Value:String=''):String;
+Const Stack:TStrArray=nil;
+var j:Integer;
+Begin
+Result:='';
+Case Command of
+0:AppendElement(Stack,Value);
+1:If Length(Stack)>0 then
+   Begin
+    Result:=Stack[0];
+    For j:=1 to High(Stack) do Stack[j-1]:=Stack[j];
+    SetLength(Stack,High(Stack));
+   End;
+2:If Length(Stack)>0 then Result:=Stack[High(Stack)];
+3:TriggerInt(0,High(Stack));
+4:SetLength(Stack,0);
+end;//Select
+End;//FIFOSTR
+
+

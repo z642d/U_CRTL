@@ -1,0 +1,278 @@
+const
+  netapi32lib = 'netapi32.dll';
+  {$NODEFINE netapi32lib}
+
+// LMACCESS.H
+
+function NetUserAdd; external netapi32lib name 'NetUserAdd';
+function NetUserEnum; external netapi32lib name 'NetUserEnum';
+function NetUserGetInfo; external netapi32lib name 'NetUserGetInfo';
+function NetUserSetInfo; external netapi32lib name 'NetUserSetInfo';
+function NetUserDel; external netapi32lib name 'NetUserDel';
+function NetUserGetGroups; external netapi32lib name 'NetUserGetGroups';
+function NetUserSetGroups; external netapi32lib name 'NetUserSetGroups';
+function NetUserGetLocalGroups; external netapi32lib name 'NetUserGetLocalGroups';
+function NetUserModalsGet; external netapi32lib name 'NetUserModalsGet';
+function NetUserModalsSet; external netapi32lib name 'NetUserModalsSet';
+function NetUserChangePassword; external netapi32lib name 'NetUserChangePassword';
+function NetGroupAdd; external netapi32lib name 'NetGroupAdd';
+function NetGroupAddUser; external netapi32lib name 'NetGroupAddUser';
+function NetGroupEnum; external netapi32lib name 'NetGroupEnum';
+function NetGroupGetInfo; external netapi32lib name 'NetGroupGetInfo';
+function NetGroupSetInfo; external netapi32lib name 'NetGroupSetInfo';
+function NetGroupDel; external netapi32lib name 'NetGroupDel';
+function NetGroupDelUser; external netapi32lib name 'NetGroupDelUser';
+function NetGroupGetUsers; external netapi32lib name 'NetGroupGetUsers';
+function NetGroupSetUsers; external netapi32lib name 'NetGroupSetUsers';
+function NetLocalGroupAdd; external netapi32lib name 'NetLocalGroupAdd';
+function NetLocalGroupAddMember; external netapi32lib name 'NetLocalGroupAddMember';
+function NetLocalGroupEnum; external netapi32lib name 'NetLocalGroupEnum';
+function NetLocalGroupGetInfo; external netapi32lib name 'NetLocalGroupGetInfo';
+function NetLocalGroupSetInfo; external netapi32lib name 'NetLocalGroupSetInfo';
+function NetLocalGroupDel; external netapi32lib name 'NetLocalGroupDel';
+function NetLocalGroupDelMember; external netapi32lib name 'NetLocalGroupDelMember';
+function NetLocalGroupGetMembers; external netapi32lib name 'NetLocalGroupGetMembers';
+function NetLocalGroupSetMembers; external netapi32lib name 'NetLocalGroupSetMembers';
+function NetLocalGroupAddMembers; external netapi32lib name 'NetLocalGroupAddMembers';
+function NetLocalGroupDelMembers; external netapi32lib name 'NetLocalGroupDelMembers';
+function NetQueryDisplayInformation; external netapi32lib name 'NetQueryDisplayInformation';
+function NetGetDisplayInformationIndex; external netapi32lib name 'NetGetDisplayInformationIndex';
+function NetAccessAdd; external netapi32lib name 'NetAccessAdd';
+function NetAccessEnum; external netapi32lib name 'NetAccessEnum';
+function NetAccessGetInfo; external netapi32lib name 'NetAccessGetInfo';
+function NetAccessSetInfo; external netapi32lib name 'NetAccessSetInfo';
+function NetAccessDel; external netapi32lib name 'NetAccessDel';
+function NetAccessGetUserPerms; external netapi32lib name 'NetAccessGetUserPerms';
+function NetGetDCName; external netapi32lib name 'NetGetDCName';
+function NetGetAnyDCName; external netapi32lib name 'NetGetAnyDCName';
+function I_NetLogonControl; external netapi32lib name 'I_NetLogonControl';
+function I_NetLogonControl2; external netapi32lib name 'I_NetLogonControl2';
+function NetEnumerateTrustedDomains; external netapi32lib name 'NetEnumerateTrustedDomains';
+
+// LMALERT.H
+
+function ALERT_OTHER_INFO(x: Pointer): Pointer;
+begin
+  Result := PChar(x) + Sizeof(STD_ALERT);
+end;
+
+function ALERT_VAR_DATA(const p): Pointer;
+begin
+  Result := PChar(p) + Sizeof(p);
+end;
+
+function NetAlertRaise; external netapi32lib name 'NetAlertRaise';
+function NetAlertRaiseEx; external netapi32lib name 'NetAlertRaiseEx';
+
+// LMSHARE.H
+
+function NetShareAdd; external netapi32lib name 'NetShareAdd';
+function NetShareEnum; external netapi32lib name 'NetShareEnum';
+function NetShareEnumSticky; external netapi32lib name 'NetShareEnumSticky';
+function NetShareGetInfo; external netapi32lib name 'NetShareGetInfo';
+function NetShareSetInfo; external netapi32lib name 'NetShareSetInfo';
+function NetShareDel; external netapi32lib name 'NetShareDel';
+function NetShareDelSticky; external netapi32lib name 'NetShareDelSticky';
+function NetShareCheck; external netapi32lib name 'NetShareCheck';
+function NetSessionEnum; external netapi32lib name 'NetSessionEnum';
+function NetSessionDel; external netapi32lib name 'NetSessionDel';
+function NetSessionGetInfo; external netapi32lib name 'NetSessionGetInfo';
+function NetConnectionEnum; external netapi32lib name 'NetConnectionEnum';
+function NetFileClose; external netapi32lib name 'NetFileClose';
+function NetFileEnum; external netapi32lib name 'NetFileEnum';
+function NetFileGetInfo; external netapi32lib name 'NetFileGetInfo';
+
+// LMMSG.H
+
+function NetMessageNameAdd; external netapi32lib name 'NetMessageNameAdd';
+function NetMessageNameEnum; external netapi32lib name 'NetMessageNameEnum';
+function NetMessageNameGetInfo; external netapi32lib name 'NetMessageNameGetInfo';
+function NetMessageNameDel; external netapi32lib name 'NetMessageNameDel';
+function NetMessageBufferSend; external netapi32lib name 'NetMessageBufferSend';
+
+// LMREMUTL.H
+
+function NetRemoteTOD; external netapi32lib name 'NetRemoteTOD';
+function NetRemoteComputerSupports; external netapi32lib name 'NetRemoteComputerSupports';
+
+// LMREPL.H
+
+function NetReplGetInfo; external netapi32lib name 'NetReplGetInfo';
+function NetReplSetInfo; external netapi32lib name 'NetReplSetInfo';
+function NetReplExportDirAdd; external netapi32lib name 'NetReplExportDirAdd';
+function NetReplExportDirDel; external netapi32lib name 'NetReplExportDirDel';
+function NetReplExportDirEnum; external netapi32lib name 'NetReplExportDirEnum';
+function NetReplExportDirGetInfo; external netapi32lib name 'NetReplExportDirGetInfo';
+function NetReplExportDirSetInfo; external netapi32lib name 'NetReplExportDirSetInfo';
+function NetReplExportDirLock; external netapi32lib name 'NetReplExportDirLock';
+function NetReplExportDirUnlock; external netapi32lib name 'NetReplExportDirUnlock';
+function NetReplImportDirAdd; external netapi32lib name 'NetReplImportDirAdd';
+function NetReplImportDirDel; external netapi32lib name 'NetReplImportDirDel';
+function NetReplImportDirEnum; external netapi32lib name 'NetReplImportDirEnum';
+function NetReplImportDirGetInfo; external netapi32lib name 'NetReplImportDirGetInfo';
+function NetReplImportDirLock; external netapi32lib name 'NetReplImportDirLock';
+function NetReplImportDirUnlock; external netapi32lib name 'NetReplImportDirUnlock';
+
+// LMSERVER.H
+
+function NetServerEnum; external netapi32lib name 'NetServerEnum';
+function NetServerEnumEx; external netapi32lib name 'NetServerEnumEx';
+function NetServerGetInfo; external netapi32lib name 'NetServerGetInfo';
+function NetServerSetInfo; external netapi32lib name 'NetServerSetInfo';
+function NetServerSetInfoCommandLine; external netapi32lib name 'NetServerSetInfoCommandLine';
+function NetServerDiskEnum; external netapi32lib name 'NetServerDiskEnum';
+function NetServerComputerNameAdd; external netapi32lib name 'NetServerComputerNameAdd';
+function NetServerComputerNameDel; external netapi32lib name 'NetServerComputerNameDel';
+function NetServerTransportAdd; external netapi32lib name 'NetServerTransportAdd';
+function NetServerTransportAddEx; external netapi32lib name 'NetServerTransportAddEx';
+function NetServerTransportDel; external netapi32lib name 'NetServerTransportDel';
+function NetServerTransportEnum; external netapi32lib name 'NetServerTransportEnum';
+function SetServiceBits; external netapi32lib name 'SetServiceBits';
+
+// LMSVC.H
+
+function SERVICE_IP_CODE(tt, nn: LongInt): LongInt;
+begin
+  Result := SERVICE_IP_QUERY_HINT or (nn or tt shl SERVICE_IP_WAITTIME_SHIFT);
+end;
+
+function SERVICE_CCP_CODE(tt, nn: LongInt): LongInt;
+begin
+  Result := SERVICE_CCP_QUERY_HINT or (nn or tt shl SERVICE_IP_WAITTIME_SHIFT);
+end;
+
+function SERVICE_UIC_CODE(cc, mm: LongInt): LongInt;
+begin
+  Result := (cc shl 16) or Word(mm);
+end;
+
+function SERVICE_NT_CCP_CODE(tt, nn: LongInt): LongInt;
+begin
+  Result := nn or ((tt and LOWER_HINT_MASK) shl SERVICE_IP_WAITTIME_SHIFT) or
+    ((tt and UPPER_HINT_MASK) shl SERVICE_NTIP_WAITTIME_SHIFT);
+end;
+
+function SERVICE_NT_WAIT_GET(code: DWORD): DWORD;
+begin
+  Result := ((code and UPPER_GET_HINT_MASK) shr SERVICE_NTIP_WAITTIME_SHIFT) or
+    ((code and LOWER_GET_HINT_MASK) shr SERVICE_IP_WAITTIME_SHIFT);
+end;
+
+function NetServiceControl; external netapi32lib name 'NetServiceControl';
+function NetServiceEnum; external netapi32lib name 'NetServiceEnum';
+function NetServiceGetInfo; external netapi32lib name 'NetServiceGetInfo';
+function NetServiceInstall; external netapi32lib name 'NetServiceInstall';
+
+// LMUSE.H
+
+function NetUseAdd; external netapi32lib name 'NetUseAdd';
+function NetUseDel; external netapi32lib name 'NetUseDel';
+function NetUseEnum; external netapi32lib name 'NetUseEnum';
+function NetUseGetInfo; external netapi32lib name 'NetUseGetInfo';
+
+// LMWKSTA.H
+
+function NetWkstaGetInfo; external netapi32lib name 'NetWkstaGetInfo';
+function NetWkstaSetInfo; external netapi32lib name 'NetWkstaSetInfo';
+function NetWkstaUserGetInfo; external netapi32lib name 'NetWkstaUserGetInfo';
+function NetWkstaUserSetInfo; external netapi32lib name 'NetWkstaUserSetInfo';
+function NetWkstaUserEnum; external netapi32lib name 'NetWkstaUserEnum';
+function NetWkstaTransportAdd; external netapi32lib name 'NetWkstaTransportAdd';
+function NetWkstaTransportDel; external netapi32lib name 'NetWkstaTransportDel';
+function NetWkstaTransportEnum; external netapi32lib name 'NetWkstaTransportEnum';
+
+// LMAPIBUF.H
+
+function NetApiBufferAllocate; external netapi32lib name 'NetApiBufferAllocate';
+function NetApiBufferFree; external netapi32lib name 'NetApiBufferFree';
+function NetApiBufferReallocate; external netapi32lib name 'NetApiBufferReallocate';
+function NetApiBufferSize; external netapi32lib name 'NetApiBufferSize';
+function NetapipBufferAllocate; external netapi32lib name 'NetapipBufferAllocate';
+
+// LMCONFIG.H
+
+function NetConfigGet; external netapi32lib name 'NetConfigGet';
+function NetConfigGetAll; external netapi32lib name 'NetConfigGetAll';
+function NetConfigSet; external netapi32lib name 'NetConfigSet';
+function NetRegisterDomainNameChangeNotification; external netapi32lib name 'NetRegisterDomainNameChangeNotification';
+function NetUnregisterDomainNameChangeNotification; external netapi32lib name 'NetUnregisterDomainNameChangeNotification';
+
+// LMSTATS.H
+
+function NetStatisticsGet; external netapi32lib name 'NetStatisticsGet';
+
+// LMAUDIT.H
+
+function NetAuditClear; external netapi32lib name 'NetAuditClear';
+function NetAuditRead; external netapi32lib name 'NetAuditRead';
+function NetAuditWrite; external netapi32lib name 'NetAuditWrite';
+
+// LMJOIN.H
+
+function NetJoinDomain; external netapi32lib name 'NetJoinDomain';
+function NetUnjoinDomain; external netapi32lib name 'NetUnjoinDomain';
+function NetRenameMachineInDomain; external netapi32lib name 'NetRenameMachineInDomain';
+function NetValidateName; external netapi32lib name 'NetValidateName';
+function NetGetJoinInformation; external netapi32lib name 'NetGetJoinInformation';
+function NetGetJoinableOUs; external netapi32lib name 'NetGetJoinableOUs';
+
+// LMERRLOG.H
+
+function NetErrorLogClear; external netapi32lib name 'NetErrorLogClear';
+function NetErrorLogRead; external netapi32lib name 'NetErrorLogRead';
+function NetErrorLogWrite; external netapi32lib name 'NetErrorLogWrite';
+
+// LMAT.H
+
+function NetScheduleJobAdd; external netapi32lib name 'NetScheduleJobAdd';
+function NetScheduleJobDel; external netapi32lib name 'NetScheduleJobDel';
+function NetScheduleJobEnum; external netapi32lib name 'NetScheduleJobEnum';
+function NetScheduleJobGetInfo; external netapi32lib name 'NetScheduleJobGetInfo';
+
+// LMBROWSR.H
+
+function I_BrowserServerEnum; external netapi32lib name 'I_BrowserServerEnum';
+function I_BrowserServerEnumEx; external netapi32lib name 'I_BrowserServerEnumEx';
+function I_BrowserQueryOtherDomains; external netapi32lib name 'I_BrowserQueryOtherDomains';
+function I_BrowserResetNetlogonState; external netapi32lib name 'I_BrowserResetNetlogonState';
+function I_BrowserSetNetlogonState; external netapi32lib name 'I_BrowserSetNetlogonState';
+function I_BrowserQueryEmulatedDomains; external netapi32lib name 'I_BrowserQueryEmulatedDomains';
+function I_BrowserQueryStatistics; external netapi32lib name 'I_BrowserQueryStatistics';
+function I_BrowserResetStatistics; external netapi32lib name 'I_BrowserResetStatistics';
+function I_BrowserServerEnumForXactsrv; external netapi32lib name 'I_BrowserServerEnumForXactsrv';
+function I_BrowserDebugTrace; external netapi32lib name 'I_BrowserDebugTrace';
+
+// LMCHDEV.H
+
+function NetCharDevEnum; external netapi32lib name 'NetCharDevEnum';
+function NetCharDevGetInfo; external netapi32lib name 'NetCharDevGetInfo';
+function NetCharDevControl; external netapi32lib name 'NetCharDevControl';
+function NetCharDevQEnum; external netapi32lib name 'NetCharDevQEnum';
+function NetCharDevQGetInfo; external netapi32lib name 'NetCharDevQGetInfo';
+function NetCharDevQSetInfo; external netapi32lib name 'NetCharDevQSetInfo';
+function NetCharDevQPurge; external netapi32lib name 'NetCharDevQPurge';
+function NetCharDevQPurgeSelf; external netapi32lib name 'NetCharDevQPurgeSelf';
+function NetHandleGetInfo; external netapi32lib name 'NetHandleGetInfo';
+function NetHandleSetInfo; external netapi32lib name 'NetHandleSetInfo';
+
+// LMDFS.H
+
+function NetDfsAdd; external netapi32lib name 'NetDfsAdd';
+function NetDfsAddStdRoot; external netapi32lib name 'NetDfsAddStdRoot';
+function NetDfsRemoveStdRoot; external netapi32lib name 'NetDfsRemoveStdRoot';
+function NetDfsAddFtRoot; external netapi32lib name 'NetDfsAddFtRoot';
+function NetDfsRemoveFtRoot; external netapi32lib name 'NetDfsRemoveFtRoot';
+function NetDfsRemoveFtRootForced; external netapi32lib name 'NetDfsRemoveFtRootForced';
+function NetDfsManagerInitialize; external netapi32lib name 'NetDfsManagerInitialize';
+function NetDfsAddStdRootForced; external netapi32lib name 'NetDfsAddStdRootForced';
+function NetDfsGetDcAddress; external netapi32lib name 'NetDfsGetDcAddress';
+function NetDfsSetDcAddress; external netapi32lib name 'NetDfsSetDcAddress';
+function NetDfsRemove; external netapi32lib name 'NetDfsRemove';
+function NetDfsEnum; external netapi32lib name 'NetDfsEnum';
+function NetDfsGetInfo; external netapi32lib name 'NetDfsGetInfo';
+function NetDfsSetInfo; external netapi32lib name 'NetDfsSetInfo';
+function NetDfsGetClientInfo; external netapi32lib name 'NetDfsGetClientInfo';
+function NetDfsSetClientInfo; external netapi32lib name 'NetDfsSetClientInfo';
+function NetDfsMove; external netapi32lib name 'NetDfsMove';
+function NetDfsRename; external netapi32lib name 'NetDfsRename';
+

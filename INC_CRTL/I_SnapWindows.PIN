@@ -1,0 +1,45 @@
+Procedure IntDummy(Dummy:Byte;var Arr:TIntArray;Val:Integer=0);
+//0:добавит VAL к содержимому
+//1:занулит содержимое
+//2:Скопирует содержимое в Arr
+Const DHA:TIntArray=nil;
+var j:integer;
+begin
+Case Dummy of
+0:AppendElement(DHA,Val);
+1:SetLength(DHA,0);
+2: Begin
+    SetLength(Arr,Length(DHA));
+    For j:=0 to High(DHA) do Arr[j]:=DHA[j];
+   End;
+end;//select
+End;
+
+Function EnumWnds(Wd: HWnd; Param: Integer): Boolean; stdcall;
+var Stub:TIntArray;
+Begin
+IntDummy(0,Stub,Wd);
+Result:=True;
+End;
+
+//На экспорт
+
+Function SnapTopWindows(var HA:TIntArray):Integer;
+Begin
+SetLength(HA,0);
+IntDummy(1,HA);
+EnumWindows(@EnumWnds, 0);
+IntDummy(2,HA);
+Result:=Length(HA);
+End;
+
+Function SnapAllChildWindows(HParent:Integer;var HA:TIntArray):Integer;
+Begin
+SetLength(HA,0);
+IntDummy(1,HA);
+EnumChildWindows(HParent,@EnumWnds,0);
+IntDummy(2,HA);
+Result:=Length(HA);
+End;
+
+

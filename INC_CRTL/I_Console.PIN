@@ -1,0 +1,191 @@
+Procedure CWrite(S:String);
+var   lpNumberOfCharsWritten:Cardinal;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE),PChar(s),Length(S),lpNumberOfCharsWritten,nil);
+End;
+
+Procedure CSetTitle(S:String);
+Begin
+ SetConsoleTitle(PChar(S));
+End;
+
+Function CGetTitle:String;
+var b:Array[0..MAX_PATH] of Char;
+Begin
+ GetConsoleTitle(b,MAX_PATH);
+ Result:=PasStr(b);
+End;
+
+Function CGotoXY(X,Y:Byte):Boolean;
+var CRD:COORD;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  CRD.X:=X; CRD.Y:=Y;
+  Result:=SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),CRD);
+ End
+Else Result:=False;
+End;
+
+Function CGetStdColor:Byte;
+var CSI:TConsoleScreenBufferInfo;
+Begin
+  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),CSI);
+  Result:=CSI.wAttributes; 
+End;
+
+Function CSetStdColor(Color:Byte):Boolean;overload;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  Result:=SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),
+          Color);
+ End
+Else Result:=False;
+End;
+
+Function CSetStdColor(Foreground,BackGround:Byte):Boolean;overload;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  Result:=SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),
+          (Foreground and $0F) or (BackGround shl 4));
+ End
+Else Result:=False;
+End;
+
+Procedure CLS;
+var y,j:Integer;
+    S:String;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  S:=StringOfChar(#32,CMaxX-1);
+  CGotoXY(0,0);
+  Y:=CMaxY;
+  for j:=0 to y do writeln(S);
+ End;
+End;
+
+Function CCurX:Byte;
+var CSI:TConsoleScreenBufferInfo;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),CSI);
+  Result:=CSI.dwCursorPosition.X
+ End
+Else Result:=$FF;
+End;//CCurX
+
+Function CCurY:Byte;
+var CSI:TConsoleScreenBufferInfo;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),CSI);
+  Result:=CSI.dwCursorPosition.Y
+ End
+Else Result:=$FF;
+End;//CCurY
+
+Function CMaxX:Byte;
+var CSI:TConsoleScreenBufferInfo;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),CSI);
+  Result:=CSI.dwSize.X
+ End
+Else Result:=$0;
+End;//CMaxX
+
+Function CMaxY:Byte;
+var CSI:TConsoleScreenBufferInfo;
+Begin
+If GetStdHandle(STD_OUTPUT_HANDLE)<>INVALID_HANDLE_VALUE then
+ Begin
+  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),CSI);
+  Result:=CSI.dwSize.Y
+ End
+Else Result:=$0;
+End;//CMaxY
+
+
+Procedure CCWrite(Expr:String);
+Var SA:TStrArray;
+    C,j:Integer;
+Begin
+C:=CGetStdColor;
+Replace(Expr,'^^',#19#19);
+Split(Expr,'^',SA,True);
+CWrite(SA[0]);
+for j:=1 to High(SA) do
+ Begin
+  CSetStdColor(Str2Int('$'+SA[j][1]),Str2Int('$'+SA[j][2]));
+  SA[j]:=Mid(SA[j],3,Length(SA[j]));
+  Replace(SA[j],#19#19,'^');
+  CWrite(SA[j]);
+ End;
+CSetStdColor(C);
+End;
+
+Procedure CCWriteln(Expr:String);
+Begin
+CCWrite(Expr+vbcrlf);
+End;
+
+procedure CCReadKey;
+var
+   stdin: THandle;
+   Buffer:char;
+   bread:dword;
+   mode: cardinal;
+begin
+   stdin := GetStdHandle(STD_INPUT_HANDLE);
+   GetConsoleMode(stdin, mode);
+   SetConsoleMode(stdin, {ENABLE_LINE_INPUT or ENABLE_ECHO_INPUT or} ENABLE_PROCESSED_INPUT);
+   ReadFile(stdin, Buffer, 1,bRead, nil);
+   SetConsoleMode(stdin, mode);
+end;//CCReadKey
+
+
+Function DnetProgress(curr:integer;prev:integer=0):String;
+var pstr:String;
+
+Function dnetstr(d:integer):String;
+const dotstr='........';
+Begin
+ d:=d div 2;
+Case d of
+ 0:result:='0';
+ 1..9:result:='0'+StringOfChar('.',d-1);
+ 10..11:result:='0'+dotstr+'20';
+ 12..19:result:='0'+dotstr+'20'+StringOfChar('.',d-11);
+ 20..21:result:='0'+dotstr+'20'+dotstr+'40';
+ 22..29:result:='0'+dotstr+'20'+dotstr+'40'+StringOfChar('.',d-21);
+ 30..31:result:='0'+dotstr+'20'+dotstr+'40'+dotstr+'60';
+ 32..39:result:='0'+dotstr+'20'+dotstr+'40'+dotstr+'60'+StringOfChar('.',d-31);
+ 40..41:result:='0'+dotstr+'20'+dotstr+'40'+dotstr+'60'+dotstr+'80';
+ 42..50:result:='0'+dotstr+'20'+dotstr+'40'+dotstr+'60'+dotstr+'80'+StringOfChar('.',d-41);
+End;//select
+End;//dnetstr
+
+Begin
+ if curr<0 then curr:=0;
+ if curr>100 then curr:=100;
+ if prev<0 then prev:=0;
+ if prev>100 then prev:=100;
+
+ if prev>=curr then
+  Begin
+   result:='';
+   exit;
+  End;
+
+ result:=dnetstr(curr);
+ if prev=0 then pstr:='' else pstr:=dnetstr(prev);
+ delete(result,1,length(pstr));
+End;//DnetProgress
+

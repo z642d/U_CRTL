@@ -1,0 +1,190 @@
+Const MidVer='$257D90203';
+//History
+//097D40212     Упорядочена структура, переименован в U_CRTL.PAS
+//0A7D40214     Дописан Inbox
+//0B7D40414     Много проделано, I_FileRoutines.PIN, I_Console.PIN, MATH не доделан
+//0C7D40426     Убиты глюки в Replace
+//0D7D40429     Написано всё для консоли, изменён способ версификации
+//0E7D40503     Добавлены процедуры обратного вызова
+//0F7D40505     Написаны модули I_ByteFileRoutines.PIN и I_Settings.PIN
+//107D40512     Устранены глюки в Split
+//117D40528     Найден глюк в FormatMoment, переписаны некрые фции I_ByteFileRoutines, написан XORBA
+//127D40623     Причёска, оптимизация по мелочам
+//137D40725     Wait4Wnd, эмуляция клавиатуры
+//147D40726     Начата работа над PlayScript
+//157D40905     Обработка команд в секции Initialization
+//!!!!!!!!!	Исходники до версии 1A безвременно утрачены в связи с кражей компа...
+//167D50314     GetWndCaption поправлен до состояния корректной работы
+//177D50507	Адаптация, оптимизация, включаем в большой проект ;)
+//187D50710	I_Crypting.PIN
+//197D60107	I_Melody.PIN в зачаточном состоянии.
+//1A7D60418     I_XML,I_RUN,I_LAN
+//1B7D60512	FastSplit, -several serious bugs
+//1С7D80123	I_XML, regular ini parser in customini.pin
+//1D7D80219	processpath, hexstrtostr rewritten
+//1E7D80304	i_md5.pin, validatemd5, filetostring without exceptions
+//1F7D80402	i_svc.pin, доработан до возможности получения адекватной GetLastError
+//207D80802	Возвращение домой => подъём версии
+//217D81008	I_Registry.PIN
+//227D81101	Собралось под fpc 2.2; убрана куча мусора
+//237D81230	Убраны глюки NTReboot, +I_RC5.PIN
+//247D90131	*I_Math, Factorize v.0.1
+//257D90203	+CopyFromStr,CutFromStr,PasteToStr
+
+Type TCoolWord=Packed Record
+Case byte of
+0:(Word:Word);
+1:(Ch	:Packed Array [0..1] of Char);
+2:(Bt	:Packed Array [0..1] of byte);
+End;
+
+Type TCoolType	= Packed Record
+Case Byte of
+1:(Ch	:Packed Array [0..3] of Char);
+2:(Bt	:Packed Array [0..3] of byte);
+3:(Int	:Integer);
+4:(Lng	:LongWord);
+5:(Words:Packed Array [0..1] of Word);
+6:(CWords:Packed Array [0..1] of TCoolWord);
+End;
+
+Type TCool64 =Packed Record
+Case Byte of
+1:(LoPart,HiPart:TCoolType);
+2:(i64:Int64);
+end;
+
+//Младший разряд идёт первым ([0])
+
+Type TVariant=Record
+ Str:String;
+ Num:TCoolType;
+ Bool:Boolean;
+End;
+
+
+Type TStrArray          =Array of String;
+Type TIntArray          =Array of Int64;
+//Type TInt64Array        =Array of Int64;
+Type TRealArray         =Array of Real;
+Type TDoubleArray       =Array of Double;
+Type TBoolArray         =Array of Boolean;
+Type TCardArray		      =Array of Cardinal;
+Type TCoolArray		      =Array of TCoolType;
+Type TTVarArray		      =Array of TVariant;
+
+Type TPtrArray           =Array of Pointer;
+
+Type TPointArray         =Array of TPoint;  
+
+Type TChArray           =Packed Array of Char;
+Type TByteArray         =Packed Array of Byte;
+Type TWordArray         =Packed Array of Word;
+
+
+
+Const FastMidBlockSize	=	131072;
+
+
+
+ResourceString
+  StrFileExistsConfirmation='Файл %0 существует. Перезаписать?';
+  StrPackageInfo           ='CRTL Version '+MidVer;
+  StrUC                    ='Under construction';
+  StrWarning               ='Внимание!';
+  StrOK                    ='OK';
+  StrCancel                ='Отмена';
+  StrError                 ='Ошибка!';
+  StrFileAppendDenied	     ='Невозможно записать в файл %0. Повторить?';	
+
+Const
+VbCrLf              = #13#10;
+VbCrLf2             = #13#10#13#10;
+VbSuperDelim	      = #13#10#17#13#10;
+VbCr                = #13;
+VbLf                = #10;
+VbTab               = #9;
+StrDialogCls        = '#32770';
+const
+
+DigitalArray:Array[0..15] of Char =
+('0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F');
+DecimalSet:Set of Char =
+['0','1','2','3','4','5','6','7','8','9'];
+SignSet:Set of Char = ['-','+'];
+
+//MSGBOX CONSTS
+vbOKOnly            = 0;     		//OK button only (default)
+vbOKCancel          = 1; 		//OK and Cancel buttons
+vbAbortRetryIgnore  = 2;		// Abort, Retry, and Ignore buttons
+vbYesNoCancel       = 3; 		//Yes, No, and Cancel buttons
+vbYesNo             = 4;     		//Yes and No buttons
+vbRetryCancel       = 5; 		//Retry and Cancel buttons
+vbCritical          = 16; 		//Critical message
+vbQuestion          = 32; 		//Warning query
+vbExclamation       = 48;	 	//Warning message
+vbInformation       = 64; 		//Information message
+//RESULTS:
+vbOK                = 1;                //OK button pressed
+vbCancel            = 2;                //Cancel button pressed
+vbAbort             = 3;                //Abort button pressed
+vbRetry             = 4;                //Retry button pressed
+vbIgnore            = 5;                //Ignore button pressed
+vbYes               = 6;                //Yes button pressed
+vbNo                = 7;                //No button pressed
+
+//Константы, определяющие системы счисления
+NUM_BASE:ARRAY [0..4] OF BYTE=($FF,16,10,8,2);
+
+NUM_UNKNOWN=0;
+NUM_HEX=1;
+NUM_DEC=2;
+NUM_OCT=3;
+NUM_BIN=4;
+
+NUM_DELIM='.';
+//Стандартный знак разделения целой части числа и мантиссы
+NUM_POSSIBLE_DELIM:String=',';
+//Нестандартные знаки разделения целой части числа и мантиссы
+NUM_MINUS='-';
+//префикс отрицательных чисел
+
+OP_PLUS=0;
+OP_MINUS=1;
+OP_MULTIPLY=2;
+
+CMP_FIRSTMORE=-1;
+CMP_EQ=0;
+CMP_SECONDMORE=1;
+
+
+
+
+//Константы для цвета консоли
+CC_Black             =$0;
+CC_Blue              =$1;
+CC_Green             =$2;
+CC_Red               =$4;
+CC_Hilite            =$8;
+
+const StrFalse='FALSE';
+      StrTrue ='TRUE';
+
+
+type
+ PStrList=^TStrList;
+ TStrList=record
+  Data:String;
+  nextptr:PStrList;
+  prevptr:PStrList;
+end;//TStrList
+
+type
+ PPtrList=^TPtrList;
+ TPtrList=record
+  Data:Pointer;
+  nextptr:PPtrList;
+  prevptr:PPtrList;
+end;
+
+type TStrOutProc=Procedure(S:String) of object;      

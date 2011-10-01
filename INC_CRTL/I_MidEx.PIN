@@ -1,0 +1,324 @@
+(*Расширенные функции работы со строками*)
+Function Replace(Var Expr:String;SearchSubStr,ReplaceSubStr:String;ProgressProc:TProgressProc):Integer;
+Var ISC,i,j,LE,LS,LR,InStrPos:Integer;
+    Rslt:String;
+Begin
+ISC:=0;
+LE:=length(Expr);
+LS:=length(SearchSubStr);
+LR:=length(ReplaceSubStr);
+Result:=0;
+j:=1;
+If Assigned(ProgressProc) then
+ Begin
+  if not(ProgressProc(0,1,UCRTL_ID_PREPARE)) then exit;
+  ISC:=InStrCount(Expr,SearchSubStr);
+ End;
+if ls<>0 then
+ Begin
+  if LS=LR then
+    Begin//отдельный обработчик строк одинаковой длины
+     SetLength(Expr,LE);
+     While j<=LE do
+      Begin
+      InStrPos:=instr(Expr,SearchSubStr,j);
+      If InStrPos<>0 then
+       Begin
+        //Если LS=1, то очень быстро:
+        inc(Result);
+        If Assigned(ProgressProc) then
+         if not(ProgressProc(Result,ISC,UCRTL_ID_REPLACE)) then exit;
+        //Вызов для возможности прервать работу
+        if LS=1 then
+                 Expr[InStrPos]:=ReplaceSubStr[1]
+                else
+                 for i:=1 to LR do Expr[i-1+InStrPos]:=ReplaceSubStr[i];
+       End
+        Else exit;
+      End;//Wend
+    End;//отдельный обработчик строк одинаковой длины
+  if (LR=0) and (LS=1) then
+   begin //Отдельный обработчик удаления символа
+      While j<=LE do
+       Begin
+        j:=instr(Expr,SearchSubStr,j);
+        If j<>0 then
+         Begin
+         inc(Result);
+         If Assigned(ProgressProc) then
+          if not(ProgressProc(Result,ISC,UCRTL_ID_REPLACE)) then exit;
+        //Вызов для возможности прервать работу
+         delete(Expr,j,1);
+         End;
+        if j=0 then j:=LE+1;
+       End;//Wend;
+      exit;
+   End;//Отдельный обработчик удаления подстроки
+ Rslt:='';
+  repeat
+    I := Pos(SearchSubStr,Expr);
+    if I > 0 then begin
+      Rslt := Rslt + Copy(Expr, 1, I - 1) + ReplaceSubStr;
+      Expr := Copy(Expr, I + LS, MaxInt);
+      Inc(Result);
+        If Assigned(ProgressProc) then
+          if not(ProgressProc(Result,ISC,UCRTL_ID_REPLACE)) then exit;
+    end
+    else Rslt := Rslt + Expr;
+  until I <= 0;
+Expr:=Rslt;
+End;//If
+End;//Replace
+
+
+function Modify2(const S, SearchSubStr,ReplaceSubStr:String;IgnoreCase:Boolean=False;ReplaceAll:Boolean=True): string;
+var
+  SearchStr, Patt, NewStr: string;
+  Offset: Integer;
+begin
+  if IgnoreCase then
+  begin
+    SearchStr := UCase(S);
+    Patt := UCase(SearchSubStr);
+  end else
+  begin
+    SearchStr := S;
+    Patt := SearchSubStr;
+  end;
+  NewStr := S;
+  Result := '';
+  while SearchStr <> '' do
+  begin
+    Offset := Pos(Patt, SearchStr);
+    if Offset = 0 then
+    begin
+      Result := Result + NewStr;
+      Break;
+    end;
+    Result := Result + Copy(NewStr, 1, Offset - 1) + ReplaceSubStr;
+    NewStr := Copy(NewStr, Offset + Length(SearchSubStr), MaxInt);
+    if not ReplaceAll then
+    begin
+      Result := Result + NewStr;
+      Break;
+    end;
+    SearchStr := Copy(SearchStr, Offset + Length(Patt), MaxInt);
+  end;
+end;
+
+
+Function Modify(Expr,SearchSubStr,ReplaceSubStr:String;ProgressProc:TProgressProc=nil):String;
+Begin
+Result:=Expr;
+Replace(Result,SearchSubStr,ReplaceSubStr,ProgressProc);
+End;//Modify
+
+Function FindPair(Expr:String;Bra:String;Cket:String;CursorPos:Integer;casesens:Boolean=True):String;
+var
+NeedCountDown,CountBorder,BracketCounter,EnterPoint,
+ExitPoint,BraL,CketL,ArL,j,i:integer;
+TpS,TempStr:String;
+Begin
+result:='';
+if CursorPos=0 then exit;
+i:=0;
+CountBorder:=1;
+NeedCountDown:=1;
+EnterPoint:=0;
+ExitPoint:=0;
+BracketCounter:=1;
+BraL:=Length(Bra);
+CKetL:=Length(CKet);
+ArL:=Length(Expr);
+If CursorPos > ArL then exit;
+If StrEq(Bra,Cket,casesens) then //отдельный обработчик одинаковых скобок (FE,кавычек)
+ Begin
+  if StrEq(mid(Expr,CursorPos,CketL),Cket,CaseSens) then i:=1;
+  For j:=CursorPos to ArL do
+   Begin
+    If StrEq(mid(Expr,j+i,CketL),Cket,casesens) then
+     Begin
+      ExitPoint:=j+i;
+      Break;
+     End;//If
+   End;//For
+  For j:=CursorPos downto 1 do
+   Begin
+    If StrEq(mid(Expr,j,BraL),Bra,casesens) then
+     Begin
+      EnterPoint:=j;
+      break;
+     End;//If
+   End;//For
+ Result:=Mid(Expr,Enterpoint,ExitPoint-EnterPoint+CketL);
+ exit;
+ End;//Отдельный обработчик одинаковых скобок (FE,кавычек)
+
+if StrEq(mid(Expr,CursorPos ,BraL),Bra,casesens) then BracketCounter:=0;
+//Отдельное условие, если курсор на начале открывающей скобки
+
+For j:=CursorPos to ArL do
+ Begin
+  TpS:=mid(Expr,j,BraL);
+  If StrEq(TpS,Bra,casesens) then
+   Begin
+    inc(BracketCounter);
+   End;//If
+  TpS:=mid(Expr,j,CKetL);
+  If StrEq(TpS,Cket,casesens) then
+   Begin
+    dec(BracketCounter);
+    if BracketCounter=0 then
+     begin
+      NeedCountDown:=-1;
+      ExitPoint:=j;
+      CountBorder:=0;
+      i:=j;
+      break;
+    End;//If
+   End;//If
+ End;//For
+If ExitPoint=0 then exit;
+While i<>CountBorder do
+ Begin
+  TempStr:=mid(Expr,i,BraL);
+  If StrEq(TempStr,Bra,casesens) then BracketCounter:=BracketCounter+1;
+  TempStr:=mid(Expr,i,CKetL);
+  If StrEq(TempStr,Cket,casesens) then BracketCounter:=BracketCounter-1;
+  If BracketCounter=0 then
+   Begin
+    if EnterPoint=0 then EnterPoint:=i;
+    If ExitPoint=0 then ExitPoint:=i;
+    Break;
+   End;
+  i:=i+NeedCountDown;
+ End;//While
+Result:=Mid(Expr,Enterpoint,ExitPoint-EnterPoint+CketL);
+End;//FindPair
+
+Function EOLtoCRLF(Expr:String):String;
+Begin
+Result:=IAdjustLineBreaks(Expr);
+End;//EOLtoCRLF
+
+Function GetParamValue(Expr,ParamName:String;EqMark:String='=';Start:Integer=1;Delimiter:String=' '):String;
+Var i,j:Integer;
+Begin
+result:='';
+j:=Instr(Expr,ParamName+EqMark,Start,0,false);
+if j=0 then exit;
+j:=j+length(ParamName+EqMark);
+i:=Instr(Expr,Delimiter,j,0,false);
+if  i>0 then result:=SubStr(Expr,j,i-1) else result:=SubStr(Expr,j,length(Expr));
+End;
+
+Function MidEx(S:String;Start,V_Lenght:Integer;ExMode:Integer;S_Start:String='';S_End:String=''):String;
+var N_Start,N_End:Integer;
+    fbc,fib,fie:boolean;
+Begin
+N_Start:=Start;
+If not IsBitsSet(ExMode,MIDEX_LENGTH_AS_NUMBER) //приводим конец к номеру байта
+   then V_Lenght:=Start+V_Lenght-1;
+N_End:=V_Lenght;
+FBC:=False;
+//Инициализация
+if IsBitsSet(ExMode,MIDEX_DIFF_START) then
+ Begin//если размывем нижнюю границу
+  if IsBitsSet(ExMode,MIDEX_INCREASE_START)
+     then N_Start:=Instr(S,S_Start,N_Start,1) //ищем назад
+     else N_Start:=Instr(S,S_Start,N_Start);  //ищем вперёд до конца строки
+  if IsBitsSet(ExMode,MIDEX_DEL_STARTSUBST)
+     then N_Start:=N_Start+Length(S_Start);   //выключаем подстроку
+ End;//если размывем нижнюю границу
+
+If IsBitsSet(ExMode,MIDEX_DIFF_END) then
+ Begin//если размывем верхнюю границу
+  if IsBitsSet(ExMode,MIDEX_INCREASE_END)
+     then N_End:=instr(S,S_End,N_End)   //ищем вперёд
+     else N_End:=instr(S,S_End,N_End,1);//ищем назад до начала строки
+  if N_End>0 then 
+   Begin
+    N_End:=N_End-1; //так как instr вернёт начало вхождения
+    if not IsBitsSet(ExMode,MIDEX_DEL_ENDSUBST)
+       then N_End:=N_End+Length(S_End)//включаем подстроку
+   end;
+ End;//если размывем верхнюю границу
+
+if N_Start=0 then Begin N_Start:=Start; FBC:=True; end;
+if N_End=0 then   Begin N_End:=V_Lenght;FBC:=True; end;
+//исправление нулевых границ
+//FBC поднимаем в случае отсутствия хотя бы одного вхождения
+
+fib:=(N_Start>V_Lenght) and                        //пересечение
+     (N_Start<N_End) and                           //положительный интервал
+     (not IsBitsSet(ExMode,MIDEX_IGNORE_POSITIVE));//надо обрабатывать
+//сильное положительное размытие
+fie:=(N_End<Start) and                             //пересечение
+     (N_Start<N_End) and                           //положительный интервал
+     (not IsBitsSet(ExMode,MIDEX_IGNORE_NEGATIVE));//надо обрабатывать
+//сильное положительное отрицательное размытие
+
+FBC:=FBC or fib or fie;
+
+if (N_Start>N_End) or FBC
+  then
+       If IsBitsSet(ExMode,MIDEX_EMPTY_IF_BORDERCROSS)
+          then result:=''//Это если между N_Start и N_End был отрицательный интервал
+          else result:=Substr(S,Start,V_Lenght)
+  else result:=Substr(S,N_Start,N_End);
+End;//MidEx
+
+
+Function TruncateString(Expr:String;NeedLength:Integer;TruncType:Byte=0):String;
+Var EL:Integer;
+Begin
+Result:=Expr;
+IF NeedLength<5 then exit;
+//Выход в случае некорректного NeedLength
+EL:=Length(Expr);
+If EL>NeedLength then
+ Begin
+//  IF NeedLength<5 then exit;
+  Case TruncType of
+  0:result:=mid(result,1,NeedLength);
+  1:result:=mid(result,EL-NeedLength+1,EL);
+  2:result:=mid(result,1,NeedLength-3)+'...';
+  3:result:='...'+mid(result,EL-NeedLength+4,EL);
+  4:if (NeedLength or 1)=NeedLength then
+       Result:=Mid(result,1,(NeedLength-3) div 2)+'...'+
+                Mid(result,EL+1-(NeedLength-3) div 2,EL)
+     else
+       Result:=Mid(result,1,(NeedLength-3) div 2)+'...'+
+                Mid(result,EL+1-(NeedLength-2) div 2,EL)
+  End;//Select
+ End//Первая часть таблицы
+Else
+ Begin
+  Case TruncType of
+  0,2: Result:=Result+StringOfChar(' ',NeedLength-EL);
+  1,3: Result:=StringOfChar(' ',NeedLength-EL)+Result;
+  4  : if ((NeedLength-EL) or 1)=(NeedLength-EL) then
+        Result:=StringOfChar(' ',(NeedLength-EL) div 2)+Result+StringOfChar(' ',(NeedLength-EL) div 2+1)
+      else
+        Result:=StringOfChar(' ',(NeedLength-EL) div 2)+Result+StringOfChar(' ',(NeedLength-EL) div 2);
+  End;//Select
+ End;//Вторая часть таблицы
+End;//TruncateString
+
+
+Function VerticalIndent(Expr:String;IndentCount:Byte):String;
+Var SA:TStrArray;
+    Var j:Integer;
+    IStr:String;
+Begin
+Result:='';
+if expr='' then exit;
+ SplitToParagraphs(Expr,SA,True);
+ IStr:='';
+ for j:=1 to IndentCount do IStr:=IStr+#32;
+ for j:=0 to high(SA)-1 do
+  Result:=Result+IStr+SA[j]+vbcrlf;
+ Result:=Result+IStr+SA[High(SA)];
+End;
+
+

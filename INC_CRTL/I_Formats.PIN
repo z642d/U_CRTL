@@ -1,0 +1,123 @@
+Function FormatExpr(Const Template,Arg:String;LeaveDoublePersentAsIs:Boolean=False):String;overload;
+Begin
+Result:=Template;
+Replace(Result,'%%',#19#19);
+Replace(Result,'%0',Arg);
+If LeaveDoublePersentAsIs 
+   then Replace(Result,#19#19,'%%')
+   else Replace(Result,#19#19,'%');
+
+End;
+
+Function FormatExpr(Const Template:String;Arg:Array of string;LeaveDoublePersentAsIs:Boolean=False):String;overload;
+Var j:Integer;
+Begin
+if length(Arg)>0 then
+ begin
+  Result:=Template;
+  Replace(Result,'%%',#19#19);
+  for j:=high(Arg) downto 0 do Replace(Result,'%'+Int2Str(j),Arg[j]);
+  If LeaveDoublePersentAsIs
+     then Replace(Result,#19#19,'%%')
+     else Replace(Result,#19#19,'%');
+ end;
+End;
+
+
+Function Int2Str(i:integer;MinDigitsCount:integer=0):String;overload;
+Var IsNg:Boolean;
+Begin
+Result:='';
+IsNg:=False;
+if i<0 then
+ Begin
+  i:=i*-1;
+  IsNg:=True;
+ end;
+repeat
+Result:=DigitalArray[i mod 10]+Result;
+i:=i div 10;
+Until (i=0);
+while length(Result)<MinDigitsCount do Result:='0'+Result;
+if isng then Result:='-'+Result;
+End;
+
+Function Int2Str(i:int64;MinDigitsCount:integer=0):String;overload;
+Var IsNg:Boolean;
+Begin
+Result:='';
+IsNg:=False;
+if i<0 then
+ Begin
+  i:=i*-1;
+  IsNg:=True;
+ end;
+repeat
+Result:=DigitalArray[i mod 10]+Result;
+i:=i div 10;
+Until (i=0);
+while length(Result)<MinDigitsCount do Result:='0'+Result;
+if isng then Result:='-'+Result;
+End;
+
+
+Function Int2StrEx(i:int64;MinDigitsCount:integer=0;DigitsInGroup:Integer=0;GroupDelim:String=' '):String;
+Var S:String;
+    SA:TSTRArray;
+Begin
+S:=Int2Str(i,MinDigitsCount);
+if not ((DigitsInGroup=0) or (GroupDelim='')) then
+ Begin
+  S:=StrReverse(S);
+  SplitToEqParts(s,DigitsInGroup,sa);
+  s:=join(SA,GroupDelim);
+  S:=StrReverse(S);
+ End;
+Result:=S; 
+End;
+
+Function Str2Int(S:String;DefVal:Integer=0):Int64;overload;
+Var E:Integer;
+Begin
+ Val(S, Result, E);
+ if E <> 0 then Result:=DefVal;
+End;
+
+
+
+Function Str2Int64(S:String;DefVal:Int64=0):Int64;
+Var E:Integer;
+Begin
+ Val(S, Result, E);
+ if E <> 0 then Result:=DefVal;
+End;
+
+Function IsDecimal(S:String):Boolean;
+Var l,j:Integer;
+Begin
+ Result:=False;
+ l:=length(S);
+ if l=0 then exit;
+ for j:=1 to l do if not((S[j] in DecimalSet) or (S[j] in SignSet)) then exit;
+ result:=True;
+End;
+
+{$Hints OFF}
+Function IsNumeric(S:String):Boolean;
+var i,e:Integer;
+Begin
+val(S,i,e);
+result:=e=0;
+End;
+{$Hints ON}
+
+Function Bool2Int(B:Boolean):Integer;
+Begin
+if B then Result:=1 else Result:=0;
+End;
+
+Function Bool2Str(B:Boolean):String;
+Begin
+if B then Result:='True' else Result:='False';
+End;
+

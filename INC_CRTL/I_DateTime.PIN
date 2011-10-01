@@ -1,0 +1,218 @@
+{Const
+WeekDayNameArr:Array [Boolean] of Array[0..6] of String =
+(('Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'),
+ ('Вс','Пн','Вт','Ср','Чт','Пт','Сб'));//IsShort
+MonthRPNameArr:Array [Boolean] of Array[1..12] of String  =
+(('января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'),
+ ('янв','фвр','мрт','апр','мая','июн','июл','авг','снт','окт','нбр','дкб'));//IsShort
+}
+//'%YY%%M0%%D0%%H0%%I0%%S0%' -- new default
+//'%D0%.%M0%.%YY% %H%:%I0%:%S0%.%e0%'  - тоже красивая строка
+//'%DC%.%H0%:%I0%:%S0%' - время в днях
+Function FormatMoment(Moment:double;Fmt:String=''):String;
+Var
+       _MSec :Word;
+       _Sec  :Byte;
+       _Min  :Byte;
+       _Hour :Byte;
+        _PM  :Boolean;
+       _Day  :Word;
+        _DOW :Word;
+       _Month:Word;
+       _Year :Word;
+Mmnt:Int64;
+StrArr:TStrArray;
+S,SAC:String;
+i,j:Integer;
+Begin
+Mmnt:=round(Moment*86400000);
+_MSec:=Mmnt mod 1000;
+MMnt:=Mmnt div 1000;
+_Sec:=Mmnt mod 60;
+MMnt:=Mmnt div 60;
+_Min:=Mmnt mod 60;
+MMnt:=Mmnt div 60;
+_Hour:=Mmnt mod 24;
+_PM:=_Hour>11;
+InternalDecodeDate(Moment, _Year, _Month, _Day, _DOW);
+if Fmt='' then result:='%YY%%M0%%D0%%H0%%I0%%S0%' else result:=Fmt;
+SplitByBrackets(Result,'%','%',StrArr);
+ For j:=0 to High(StrArr) do
+  Begin
+  SAC:=UCase(StrArr[j]);
+  S:='';
+   i:=InstrCount(SAC,'Y'); if i>0 then S:=SubStr(Int2Str(_Year,4),5-i,4);
+   If SAC='%M%' then S:=Int2Str(_Month);
+   If SAC='%M0%' then S:=Int2Str(_Month,2);
+   If SAC='%D%' then S:=Int2Str(_Day);
+   If SAC='%D0%' then S:=Int2Str(_Day,2);
+   If SAC='%H%' then S:=Int2Str(_Hour);
+   If SAC='%H0%' then S:=Int2Str(_Hour,2);
+   If SAC='%H12%' then Begin i:=_Hour mod 12; if i=0 then i:=12; S:=Int2Str(i); End;
+   If SAC='%H012%' then Begin i:=_Hour mod 12; if i=0 then i:=12; S:=Int2Str(i,2); End;
+   If SAC='%I%' then S:=Int2Str(_Min);
+   If SAC='%I0%' then S:=Int2Str(_Min,2);
+   If SAC='%S%' then S:=Int2Str(_Sec);
+   If SAC='%S0%' then S:=Int2Str(_Sec,2);
+   If SAC='%E%' then S:=Int2Str(_MSec);
+   If SAC='%E0%' then S:=Int2Str(_MSec,3);
+   If SAC='%E1%' then S:=Int2Str(_MSec div 100,1);
+   If SAC='%E2%' then S:=Int2Str(_MSec div 10,2);
+   If SAC='%DC%' then S:=Int2Str(Round(Int(Moment)));
+   If SAC='%HC%' then S:=Int2Str(Round(Int(Moment*24)));
+
+   If Instr(SAC,'%AP')>0 then
+    Begin
+     if _PM
+      then S:=Substr(StrArr[j],Instr(StrArr[j],'?')+1,Instr(StrArr[j],'?',Length(SAC))-1)
+      else S:=Substr(StrArr[j],Instr(StrArr[j],'!')+1,Instr(StrArr[j],'!',Length(SAC),1)-1);
+    End;
+   if S<>'' then
+   replace(result,StrArr[j],S);
+  End;//For
+End;
+
+function GTCFormatMoment(Moment:cardinal;Fmt:String=''):String;
+Begin
+ result:=FormatMoment(moment/(86400*1000),fmt); 
+End;
+
+function Now: Double;
+var
+  SystemTime: TSystemTime;
+begin
+  GetLocalTime(SystemTime);
+  with SystemTime do
+    Result := EncodeDate(wYear, wMonth, wDay) +
+      EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
+end;
+
+Function UTC:Double;
+begin
+  result:=ToUTC(now);
+End;//UTC
+
+Function ToUTC(date:double):Double;
+var
+  TimeZoneInformation : TTimeZoneInformation;
+Begin
+  GetTimeZoneInformation(TimeZoneInformation);
+  result:=now+TimeZoneInformation.Bias/(24*60);
+end;//ToUTC
+
+Function FromUTC(date:double):Double;
+var
+  TimeZoneInformation : TTimeZoneInformation;
+Begin
+  GetTimeZoneInformation(TimeZoneInformation);
+  result:=now-TimeZoneInformation.Bias/(24*60);
+end;//FromUTC
+
+Function Date:Double;overload;
+var
+  SystemTime: TSystemTime;
+begin
+  GetLocalTime(SystemTime);
+  with SystemTime do
+    Result := EncodeDate(wYear, wMonth, wDay);
+end;//Date
+
+Function Date(DT:Double):Double;overload;
+var ST: TSystemTime;
+Begin
+ InternalDecodeDate(DT,st.wYear,st.wMonth,st.wDay,ST.wDayOfWeek);
+ st.wHour:=0;
+ st.wMinute:=0;
+ st.wSecond:=0;
+ st.wMilliseconds:=0;
+ with ST do
+    Result := EncodeDate(wYear, wMonth, wDay);
+End;//Date
+
+
+
+
+
+Function Time:Double;overload;
+var
+  SystemTime: TSystemTime;
+begin
+  GetLocalTime(SystemTime);
+  with SystemTime do
+    Result :=  EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
+end;//Time
+
+Function Time(DT:Double):Double;overload;
+ var ST: TSystemTime;
+Begin
+ InternalDecodeTime(dt,st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
+  with ST do
+    Result :=  EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
+End;//Time
+
+Function Hour(DT:Double):Byte;
+ var ST: TSystemTime;
+Begin
+ InternalDecodeTime(dt,st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
+
+  with ST do Result :=  wHour;
+End;//Hour
+
+Function Minute(DT:Double):Byte;
+ var ST: TSystemTime;
+Begin
+ InternalDecodeTime(dt,st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
+  with ST do Result :=  wMinute;
+End;//Minute
+
+Function Second(DT:Double):Byte;
+ var ST: TSystemTime;
+Begin
+ InternalDecodeTime(dt,st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
+  with ST do Result :=  wSecond;
+End;//Second
+
+Function Day(Data:Double):Byte;
+Var _Day,_DOW,_Month,_Year:Word;
+Begin
+ InternalDecodeDate(Data,_Year,_Month,_Day,_DOW);
+ Result:=_Day;
+End;
+
+Function Month(Data:Double):Byte;
+Var _Day,_DOW,_Month,_Year:Word;
+Begin
+ InternalDecodeDate(Data,_Year,_Month,_Day,_DOW);
+ Result:=_Month;
+End;
+
+Function Year(Data:Double):Word;
+Var _Day,_DOW,_Month,_Year:Word;
+Begin
+ InternalDecodeDate(Data,_Year,_Month,_Day,_DOW);
+ Result:=_Year;
+End;
+
+Function DOW(Data:Double):Byte;
+Var _Day,_DOW,_Month,_Year:Word;
+Begin
+ InternalDecodeDate(Data,_Year,_Month,_Day,_DOW);
+ Result:=_DOW;
+End;
+
+Function BuildDate(_Year,_Month,_Day:Word):Double;
+Begin
+ TryEncodeDate(_Year, _Month, _Day, Result);
+End;
+
+Function UnixDateTime(D:Double):Int64;
+Begin
+ Result:=Round((D-25569)*24*60*60);
+End;
+
+Function FirstDayOfMonth(data:Double):Double;
+Begin
+ result:=date(data);
+ result:=result-day(result)+1;
+End;
+

@@ -1,0 +1,261 @@
+Function IsStrHexStr(HexStr:String):Boolean;
+Var S:String;
+    SA:TStrArray;
+    j,l:Integer;
+Begin
+S:=HexStr;
+SplitToWords(S,SA);
+S:=UCase(Join(SA,''));
+l:=Length(S);
+Result:=False;
+for j:=1 to l do
+ Case ord(S[j]) of
+  $30..$39,$41..$46:;
+  Else exit;
+ end;//Select
+Result:=True;
+End;
+
+Function IsStrIntStr(IntStr:String):Boolean;
+Var S:String;
+    SA:TStrArray;
+    j,l:Integer;
+Begin
+S:=IntStr;
+SplitToWords(S,SA);
+S:=UCase(Join(SA,''));
+l:=Length(S);
+Result:=False;
+for j:=1 to l do
+ Case ord(S[j]) of
+  $30..$39:;
+  Else exit;
+ end;//Select
+Result:=True;
+End;
+
+Function IsStrOctStr(OctStr:String):Boolean;
+Var S:String;
+    SA:TStrArray;
+    j,l:Integer;
+Begin
+S:=OctStr;
+SplitToWords(S,SA);
+S:=UCase(Join(SA,''));
+l:=Length(S);
+Result:=False;
+for j:=1 to l do
+ Case ord(S[j]) of
+  $30..$37:;
+  Else exit;
+ end;//Select
+Result:=True;
+End;
+
+Function IsStrBinStr(BinStr:String):Boolean;
+Var S:String;
+    SA:TStrArray;
+    j,l:Integer;
+Begin
+S:=BinStr;
+SplitToWords(S,SA);
+S:=UCase(Join(SA,''));
+l:=Length(S);
+Result:=False;
+for j:=1 to l do
+ Case ord(S[j]) of
+  $30..$31:;
+  Else exit;
+ end;//Select
+Result:=True;
+End;
+
+
+
+Function CorrectHexStr(Var HexStr:String):Byte;
+Var SA:TStrArray;
+    S:String;
+Begin
+  S:=HexStr;
+  SplitToWords(S,SA);
+  SplitToEqParts(Join(SA,''),2,SA);
+  If length(SA)<1  then
+   Begin
+    Result:=CHS_EMPTY_EXPR;
+    exit;
+   End;
+  If length(SA[high(SA)])<>2 then
+   Begin
+    Result:=CHS_EVEN_QUANTITY;
+    Exit;
+   end;
+  S:=UCase(Join(SA,' '));
+  if not IsStrHexStr(S) then
+   Begin
+    Result:=CHS_IRREGULAR_SYM;
+    Exit;
+   End;
+ Result:=0;  
+ HexStr:=S;
+End;
+
+Function ByteArrayToHexStr(var BA:TByteArray; BytesInString:Integer=8;ProgressProc:TProgressProc=nil;PerByteDelim:String=' '):String;
+var C,j,h:Integer;
+Begin
+Result:='';
+C:=0;
+h:=High(BA);
+For j:=0 to h do
+ Begin
+  If Assigned(ProgressProc) then
+   if not(ProgressProc(j,h,UCRTL_ID_BYTEARRAYTOHEXSTR)) then exit;
+  Result:=Result+Int2Hex(BA[j],2);
+  inc(C);
+   If C=BytesInString
+    then
+     Begin
+      C:=0;
+      Result:=Result+vbcrlf;
+     End
+    else
+     Result:=Result+' ';
+ End;
+End;//ByteArrayToHexStr
+
+Function ooHexStrToStr(HexExpr:String;FillNullChars:Char=Chr(32);ProgressProc:TProgressProc=nil):String;
+Var h,a,j:Integer;
+    SA:TStrArray;
+    S:String;
+Begin
+ SplitToWords(HexExpr,SA,ProgressProc);
+ S:='';
+ h:=High(SA);
+ For j:=0 to h do
+  Begin
+   a:=Str2Int('$'+SA[j],256);
+   If a=256 then exit
+       Else
+        Begin
+         if a=0 then S:=S+FillNullChars else S:=S+Chr(a);
+        End;
+  End;
+Result:=S;
+End;//HexStrToStr
+
+Function oHexStrToStr(HexExpr:String;FillNullChars:Char=Chr(32);ProgressProc:TProgressProc=nil):String;
+Var h,a,j:Integer;
+    SA:TStrArray;
+    S:String;
+Begin
+ SplitToWords(HexExpr,SA,ProgressProc);
+ S:='';
+ h:=High(SA);
+ For j:=0 to h do
+  Begin
+   a:=Str2Int('$'+SA[j],256);
+   If a=256 then exit
+       Else
+        Begin
+         if a=0 then S:=S+FillNullChars else S:=S+Chr(a);
+        End;
+  End;
+Result:=S;
+End;//HexStrToStr
+
+Function HexStrToStr(HexExpr:String;FillNullChars:Char=#0;ProgressProc:TProgressProc=nil):String;
+var wd:String;
+    Expr:String;
+    S:String;
+    estRsltLen,a:Integer;
+    j,startlen:Integer;
+//    rchr:Char;
+Begin
+// factRsltLen:=0;
+ Expr:=HexExpr;
+ Expr:=KillSpaces(Expr);
+ //Прибьём все пробелы!
+ if (length(expr) mod 2 = 1) then expr:='0'+Expr;
+ startlen:=Length(Expr);
+ estRsltLen:=(startlen div 2);
+ SetLength(S,estRsltLen);
+
+ for j:=0 to estRsltLen do
+  Begin
+    If Assigned(ProgressProc) then
+     if not(ProgressProc(j*2,startLen,UCRTL_ID_HEXSTRTOSTR)) then exit;
+   wd:=copy(Expr,j*2+1,2);
+   a:=Str2Int('$'+wd,256);
+   If a=256 then break;
+    S[j+1]:=Chr(a);
+  End;
+Result:=S;
+End;//HexStrToStr
+
+
+
+Function RealignHexStr(HexExpr:String;BytesInString:Integer=8;ProgressProc:TProgressProc=nil):String;
+Var SA:TStrArray;
+    h,C,j:Integer;
+Begin
+SplitToWords(HexExpr,SA);
+C:=0;
+Result:='';
+h:=High(SA);
+if h=0 then
+ begin
+  Result:=SA[0];
+  exit;
+ End;
+For j:=0 to h do
+ Begin
+  If Assigned(ProgressProc) then
+   if not(ProgressProc(j,h,UCRTL_ID_REALIGNHEXSTR)) then exit;
+  Result:=Result+SA[j];
+  inc(C);
+   If C=BytesInString
+    then
+     Begin
+      C:=0;
+      Result:=Result+vbcrlf;
+     End
+    else
+     Result:=Result+' ';
+ End;
+End;//RealignHexStr
+
+Function HexStrToByteArray(HexExpr:String;var BA:TByteArray;ProgressProc:TProgressProc=nil):Boolean;
+Var SA:TStrArray;
+    a,h,j:Integer;
+Begin
+Result:=False;
+SplitToWords(HexExpr,SA);
+h:=High(SA);
+SetLength(BA,h+1);
+For j:=0 to h do
+ Begin
+  If Assigned(ProgressProc) then
+   if not(ProgressProc(j,h,UCRTL_ID_HEXSTRTOBYTEARRAY)) then exit;
+   a:=Str2Int('$'+SA[j],256);
+   If a=256 then exit
+            Else BA[j]:=a;
+ End;
+Result:=True;
+End;//HexStrToByteArray
+
+
+Function StringToHexString(Const S:String; Delim:String=' '):String;
+var i,j:Integer;
+    hs:String;
+    kff:Integer;
+Begin
+Result:='';
+if S='' then exit;
+kff:=2+Length(Delim);
+Result:=StringOfChar(#0,Length(S)*kff);
+for j:=1 to length(S) do
+ Begin
+  hs:=Int2Hex(ord(S[j]),2)+Delim;
+  for i:=1 to length(hs) do
+   Result[(j-1)*kff+i]:=hs[i];
+ End; 
+End;

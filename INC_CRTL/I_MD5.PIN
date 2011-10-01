@@ -1,0 +1,262 @@
+type
+  TMD5Result = packed array [0 .. 15] of Byte;
+  TMD5Digest = packed array [0 .. 3] of LongWord;
+  TMD5Buffer = packed array [0 .. 63] of Byte;
+
+  PMD5Record = ^TMD5Record;
+  TMD5Record = record
+    Buffer: TMD5Buffer;
+    Digest: TMD5Digest;
+    BytesCount: Int64;
+  end;
+
+  PMD5TransformArray = ^TMD5TransformArray;
+  TMD5TransformArray = packed array [0 .. MaxLongInt div SizeOf(LongWord) - 1] of LongWord;
+
+
+procedure CalcMD5_Init(var AMD5Record: TMD5Record); register;  // IPO
+begin
+  with AMD5Record do
+  begin
+    FillChar(Buffer, SizeOf(Buffer), 0);
+    Digest[0] := $67452301;
+    Digest[1] := $EFCDAB89;
+    Digest[2] := $98BADCFE;
+    Digest[3] := $10325476;
+    BytesCount := 0;
+  end;
+end;
+
+procedure CalcMD5_Transform(Buffer: PMD5TransformArray;  // IPO
+  var Digest: TMD5Digest); register;
+var
+  A, B, C, D: LongWord;
+begin
+  A := Digest[0];
+  B := Digest[1];
+  C := Digest[2];
+  D := Digest[3];
+
+  Inc(A, Buffer[ 0] + $D76AA478 + (D xor (B and (C xor D))));
+  A := A shl  7 or A shr 25 + B;
+  Inc(D, Buffer[ 1] + $E8C7B756 + (C xor (A and (B xor C))));
+  D := D shl 12 or D shr 20 + A;
+  Inc(C, Buffer[ 2] + $242070DB + (B xor (D and (A xor B))));
+  C := C shl 17 or C shr 15 + D;
+  Inc(B, Buffer[ 3] + $C1BDCEEE + (A xor (C and (D xor A))));
+  B := B shl 22 or B shr 10 + C;
+  Inc(A, Buffer[ 4] + $F57C0FAF + (D xor (B and (C xor D))));
+  A := A shl  7 or A shr 25 + B;
+  Inc(D, Buffer[ 5] + $4787C62A + (C xor (A and (B xor C))));
+  D := D shl 12 or D shr 20 + A;
+  Inc(C, Buffer[ 6] + $A8304613 + (B xor (D and (A xor B))));
+  C := C shl 17 or C shr 15 + D;
+  Inc(B, Buffer[ 7] + $FD469501 + (A xor (C and (D xor A))));
+  B := B shl 22 or B shr 10 + C;
+  Inc(A, Buffer[ 8] + $698098D8 + (D xor (B and (C xor D))));
+  A := A shl  7 or A shr 25 + B;
+  Inc(D, Buffer[ 9] + $8B44F7AF + (C xor (A and (B xor C))));
+  D := D shl 12 or D shr 20 + A;
+  Inc(C, Buffer[10] + $FFFF5BB1 + (B xor (D and (A xor B))));
+  C := C shl 17 or C shr 15 + D;
+  Inc(B, Buffer[11] + $895CD7BE + (A xor (C and (D xor A))));
+  B := B shl 22 or B shr 10 + C;
+  Inc(A, Buffer[12] + $6B901122 + (D xor (B and (C xor D))));
+  A := A shl  7 or A shr 25 + B;
+  Inc(D, Buffer[13] + $FD987193 + (C xor (A and (B xor C))));
+  D := D shl 12 or D shr 20 + A;
+  Inc(C, Buffer[14] + $A679438E + (B xor (D and (A xor B))));
+  C := C shl 17 or C shr 15 + D;
+  Inc(B, Buffer[15] + $49B40821 + (A xor (C and (D xor A))));
+  B := B shl 22 or B shr 10 + C;
+
+  Inc(A, Buffer[ 1] + $F61E2562 + (C xor (D and (B xor C))));
+  A := A shl  5 or A shr 27 + B;
+  Inc(D, Buffer[ 6] + $C040B340 + (B xor (C and (A xor B))));
+  D := D shl  9 or D shr 23 + A;
+  Inc(C, Buffer[11] + $265E5A51 + (A xor (B and (D xor A))));
+  C := C shl 14 or C shr 18 + D;
+  Inc(B, Buffer[ 0] + $E9B6C7AA + (D xor (A and (C xor D))));
+  B := B shl 20 or B shr 12 + C;
+  Inc(A, Buffer[ 5] + $D62F105D + (C xor (D and (B xor C))));
+  A := A shl  5 or A shr 27 + B;
+  Inc(D, Buffer[10] + $02441453 + (B xor (C and (A xor B))));
+  D := D shl  9 or D shr 23 + A;
+  Inc(C, Buffer[15] + $D8A1E681 + (A xor (B and (D xor A))));
+  C := C shl 14 or C shr 18 + D;
+  Inc(B, Buffer[ 4] + $E7D3FBC8 + (D xor (A and (C xor D))));
+  B := B shl 20 or B shr 12 + C;
+  Inc(A, Buffer[ 9] + $21E1CDE6 + (C xor (D and (B xor C))));
+  A := A shl  5 or A shr 27 + B;
+  Inc(D, Buffer[14] + $C33707D6 + (B xor (C and (A xor B))));
+  D := D shl  9 or D shr 23 + A;
+  Inc(C, Buffer[ 3] + $F4D50D87 + (A xor (B and (D xor A))));
+  C := C shl 14 or C shr 18 + D;
+  Inc(B, Buffer[ 8] + $455A14ED + (D xor (A and (C xor D))));
+  B := B shl 20 or B shr 12 + C;
+  Inc(A, Buffer[13] + $A9E3E905 + (C xor (D and (B xor C))));
+  A := A shl  5 or A shr 27 + B;
+  Inc(D, Buffer[ 2] + $FCEFA3F8 + (B xor (C and (A xor B))));
+  D := D shl  9 or D shr 23 + A;
+  Inc(C, Buffer[ 7] + $676F02D9 + (A xor (B and (D xor A))));
+  C := C shl 14 or C shr 18 + D;
+  Inc(B, Buffer[12] + $8D2A4C8A + (D xor (A and (C xor D))));
+  B := B shl 20 or B shr 12 + C;
+
+  Inc(A, Buffer[ 5] + $FFFA3942 + (B xor C xor D));
+  A := A shl  4 or A shr 28 + B;
+  Inc(D, Buffer[ 8] + $8771F681 + (A xor B xor C));
+  D := D shl 11 or D shr 21 + A;
+  Inc(C, Buffer[11] + $6D9D6122 + (D xor A xor B));
+  C := C shl 16 or C shr 16 + D;
+  Inc(B, Buffer[14] + $FDE5380C + (C xor D xor A));
+  B := B shl 23 or B shr  9 + C;
+  Inc(A, Buffer[ 1] + $A4BEEA44 + (B xor C xor D));
+  A := A shl  4 or A shr 28 + B;
+  Inc(D, Buffer[ 4] + $4BDECFA9 + (A xor B xor C));
+  D := D shl 11 or D shr 21 + A;
+  Inc(C, Buffer[ 7] + $F6BB4B60 + (D xor A xor B));
+  C := C shl 16 or C shr 16 + D;
+  Inc(B, Buffer[10] + $BEBFBC70 + (C xor D xor A));
+  B := B shl 23 or B shr  9 + C;
+  Inc(A, Buffer[13] + $289B7EC6 + (B xor C xor D));
+  A := A shl  4 or A shr 28 + B;
+  Inc(D, Buffer[ 0] + $EAA127FA + (A xor B xor C));
+  D := D shl 11 or D shr 21 + A;
+  Inc(C, Buffer[ 3] + $D4EF3085 + (D xor A xor B));
+  C := C shl 16 or C shr 16 + D;
+  Inc(B, Buffer[ 6] + $04881D05 + (C xor D xor A));
+  B := B shl 23 or B shr  9 + C;
+  Inc(A, Buffer[ 9] + $D9D4D039 + (B xor C xor D));
+  A := A shl  4 or A shr 28 + B;
+  Inc(D, Buffer[12] + $E6DB99E5 + (A xor B xor C));
+  D := D shl 11 or D shr 21 + A;
+  Inc(C, Buffer[15] + $1FA27CF8 + (D xor A xor B));
+  C := C shl 16 or C shr 16 + D;
+  Inc(B, Buffer[ 2] + $C4AC5665 + (C xor D xor A));
+  B := B shl 23 or B shr  9 + C;
+
+  Inc(A, Buffer[ 0] + $F4292244 + (C xor (B or not D)));
+  A := A shl  6 or A shr 26 + B;
+  Inc(D, Buffer[ 7] + $432AFF97 + (B xor (A or not C)));
+  D := D shl 10 or D shr 22 + A;
+  Inc(C, Buffer[14] + $AB9423A7 + (A xor (D or not B)));
+  C := C shl 15 or C shr 17 + D;
+  Inc(B, Buffer[ 5] + $FC93A039 + (D xor (C or not A)));
+  B := B shl 21 or B shr 11 + C;
+  Inc(A, Buffer[12] + $655B59C3 + (C xor (B or not D)));
+  A := A shl  6 or A shr 26 + B;
+  Inc(D, Buffer[ 3] + $8F0CCC92 + (B xor (A or not C)));
+  D := D shl 10 or D shr 22 + A;
+  Inc(C, Buffer[10] + $FFEFF47D + (A xor (D or not B)));
+  C := C shl 15 or C shr 17 + D;
+  Inc(B, Buffer[ 1] + $85845DD1 + (D xor (C or not A)));
+  B := B shl 21 or B shr 11 + C;
+  Inc(A, Buffer[ 8] + $6FA87E4F + (C xor (B or not D)));
+  A := A shl  6 or A shr 26 + B;
+  Inc(D, Buffer[15] + $FE2CE6E0 + (B xor (A or not C)));
+  D := D shl 10 or D shr 22 + A;
+  Inc(C, Buffer[ 6] + $A3014314 + (A xor (D or not B)));
+  C := C shl 15 or C shr 17 + D;
+  Inc(B, Buffer[13] + $4E0811A1 + (D xor (C or not A)));
+  B := B shl 21 or B shr 11 + C;
+  Inc(A, Buffer[ 4] + $F7537E82 + (C xor (B or not D)));
+  A := A shl  6 or A shr 26 + B;
+  Inc(D, Buffer[11] + $BD3AF235 + (B xor (A or not C)));
+  D := D shl 10 or D shr 22 + A;
+  Inc(C, Buffer[ 2] + $2AD7D2BB + (A xor (D or not B)));
+  C := C shl 15 or C shr 17 + D;
+  Inc(B, Buffer[ 9] + $EB86D391 + (D xor (C or not A)));
+  B := B shl 21 or B shr 11 + C;
+
+  Inc(Digest[0], A);
+  Inc(Digest[1], B);
+  Inc(Digest[2], C);
+  Inc(Digest[3], D);
+end;
+
+procedure CalcMD5_Calc(const AData; var ASize: LongWord;  // IPO
+  var AMD5Record: TMD5Record); register;
+const  
+  MaxBytes = MaxLongInt;
+type
+  PBytes = ^TBytes;
+  TBytes = packed array [0 .. MaxBytes - 1] of Byte;
+var
+  Index: Cardinal;
+  P: PChar;
+begin
+  if ASize = 0 then Exit;
+
+  Index := AMD5Record.BytesCount and $3F;
+  Inc(AMD5Record.BytesCount, ASize);
+  if Index > 0 then
+  begin
+    if ASize < 64 - Index then
+    begin
+      Move(AData, AMD5Record.Buffer[Index], ASize);
+      Exit;
+    end;
+    Move(AData, AMD5Record.Buffer[Index], 64 - Index);
+    CalcMD5_Transform(@AMD5Record.Buffer, AMD5Record.Digest);
+    Index := 64 - Index;
+    Dec(ASize, Index);
+  end;
+  P := @(TBytes(AData)[Index]);
+  Inc(Index, ASize and not $3F);
+  while ASize >= 64 do
+  begin
+    CalcMD5_Transform(Pointer(P), AMD5Record.Digest);
+    Inc(P, 64);
+    Dec(ASize, 64);
+  end;
+  Move(TBytes(AData)[Index], AMD5Record.Buffer, ASize);
+end;
+
+procedure CalcMD5_Done(var AMD5Record: TMD5Record); register;  // IPO
+var
+  I: Integer;
+  S: Int64;
+begin
+  I := AMD5Record.BytesCount and $3F;
+  AMD5Record.Buffer[I] := $80;
+  Inc(I);
+  if I > 64 - 8 then
+  begin
+    FillChar(AMD5Record.Buffer[I], 64 - I, 0);
+    CalcMD5_Transform(@AMD5Record.Buffer, AMD5Record.Digest);
+    I := 0;
+  end;
+  FillChar(AMD5Record.Buffer[I], 64 - I, 0);
+  S := AMD5Record.BytesCount shl 3;  // Get number of bits: BytesCount * 8;
+  Move(S, AMD5Record.Buffer[64 - 8], SizeOf(S));
+  CalcMD5_Transform(@AMD5Record.Buffer, AMD5Record.Digest);
+
+  // Clearing
+  FillChar(AMD5Record.Buffer, SizeOf(AMD5Record.Buffer), 0);
+  AMD5Record.BytesCount := 0;
+end;
+
+function CalcMD5(const AData; ASize: LongWord): TMD5Result; register; overload;
+var
+  MD5Record: TMD5Record;
+begin
+  CalcMD5_Init(MD5Record);
+  CalcMD5_Calc(AData, ASize, MD5Record);
+  CalcMD5_Done(MD5Record);
+  Move(MD5Record.Digest, Result, SizeOf(Result));
+end;
+
+function CalcMD5(const AString: AnsiString): TMD5Result; register; overload;
+begin
+  Result := CalcMD5(PChar(AString)^, Length(AString));
+end;
+
+function MD5(const Expr:String): String;
+ var MD5Result:TMD5Result;
+     j:Integer;
+Begin
+MD5Result:=CalcMD5(Expr);
+SetLength(Result,length(MD5Result));
+for j:=0 to high(MD5Result) do result[j+1]:=chr(MD5Result[j]);
+End;//md5

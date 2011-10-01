@@ -1,0 +1,372 @@
+Const
+  GENERIC_READ             = DWORD($80000000);
+  {$EXTERNALSYM GENERIC_READ}
+  GENERIC_WRITE            = $40000000;
+  {$EXTERNALSYM GENERIC_WRITE}
+  GENERIC_EXECUTE          = $20000000;
+  {$EXTERNALSYM GENERIC_EXECUTE}
+  GENERIC_ALL              = $10000000;
+  {$EXTERNALSYM GENERIC_ALL}
+
+
+
+Function SetServiceDescription(SHndl: THandle; Desc: String): Bool;
+Const SERVICE_CONFIG_DESCRIPTION: DWord = 1;
+Var
+DynChangeServiceConfig2: Function(
+      hService: SC_HANDLE;                    // handle to service
+      dwInfoLevel: DWORD;                     // information level
+      lpInfo: Pointer): Bool; StdCall;        // new data
+      LibHndl: THandle;
+      TempP: PChar;
+Begin
+//Динамическая подгрузка либы, т.к в 4 NT этой фции нет: там просто
+//ChangeServiceConfig, который не хавает дескрипшн, из-за которого затеваемся собсно
+ LibHndl := GetModuleHandle(advapi32);
+ Result := LibHndl <> 0;
+  If Not Result Then Exit;
+ DynChangeServiceConfig2 := GetProcAddress(LibHndl, 'ChangeServiceConfig2A');
+ Result := @DynChangeServiceConfig2 <> Nil;
+  If Not Result Then Exit;
+ TempP := PChar(Desc); //ChangeServiceConfig2 хочет вместо строки указатель на указатель ;-)
+ Result := DynChangeServiceConfig2(SHndl, SERVICE_CONFIG_DESCRIPTION, @TempP);
+End;
+
+
+
+
+Function SvcUninstall(svcname:String;MachineName:String='';verbose:Boolean=False):Integer;
+//Анинсталл сервиса, параметры как SvcInstall
+Var
+    scHndl, sHndl: THandle;
+    aStatus: TServiceStatus;
+label fin;
+Begin
+  Result:=ERROR_SUCCESS;
+  if verbose then  Write('Connecting Service Control Manager...');
+  scHndl := OpenSCManager(PChar(MachineName), Nil, GENERIC_EXECUTE);
+  sHndl:=INVALID_HANDLE_VALUE;//no warn
+  If scHndl = 0 Then
+  Begin
+   Result := GetLastError;
+   if verbose then Writeln('Failed!');
+   if verbose then Writeln('Error: '+ GleStr(Result));
+   goto fin;
+  End;
+    if verbose then Writeln('Ok');
+    if verbose then Write('Opening and Quering Service...');
+    sHndl := OpenService(SCHndl, pchar(svcname),
+      STANDARD_RIGHTS_REQUIRED Or SERVICE_QUERY_STATUS Or SERVICE_STOP);
+    If sHndl = 0 Then
+    Begin
+     Result := GetLastError;
+     if verbose then Writeln('Failed!');
+     if verbose then Writeln('Error: '+ GleStr(Result));
+     goto fin;
+    End;
+     If Not QueryServiceStatus(sHndl, aStatus) Then
+      Begin
+       Result := GetLastError;
+       if verbose then Writeln('Failed!');
+       if verbose then Writeln('Error: '+ GleStr(Result));
+       goto fin;
+      End;//ну нет такого сервиса! или прав... Нам расскажут
+      if verbose then Writeln('Ok');
+
+      If aStatus.dwCurrentState <> SERVICE_STOPPED Then
+      Begin
+        if verbose then Write('Service is running, wait until stopped...');
+        If Not ControlService(sHndl, SERVICE_CONTROL_STOP, aStatus) Then
+        Begin
+         Result := GetLastError;
+         if verbose then Writeln('Failed!');
+         if verbose then Writeln('Error: '+ GleStr(Result));
+         goto fin;
+        End;
+        While aStatus.dwCurrentState <> SERVICE_STOPPED Do
+        Begin
+          Sleep(100); if verbose then Write('.');
+          If Not QueryServiceStatus(sHndl, aStatus) Then
+          Begin
+            ExitCode := GetLastError;
+            if verbose then Writeln('Failed! Error: '+ GLEStr(ExitCode));
+            Exit;
+          End;
+        End;
+        if verbose then Writeln('Stopped');
+      End;
+      if verbose then Write('Deleting Service...');
+      If Not DeleteService(sHndl) Then
+      Begin
+       Result := GetLastError;
+       if verbose then Writeln('Failed!');
+       if verbose then Writeln('Error: '+ GleStr(Result));
+       goto fin;
+      End;
+      if verbose then Writeln('Ok');
+if verbose then Writeln('Service uninstall success.');
+fin:
+    CloseServiceHandle(sHndl);
+    CloseServiceHandle(SCHndl);
+End;//svcuninstall
+
+
+
+
+
+Function SvcGetPathBySvcName(SvcName:String;MachineName:String=''):String;
+Var scHndl, sHndl: THandle;
+    cbBuffSize, pcbBytesNeeded:DWORD;
+    lpServiceConfig: PQueryServiceConfig;
+    le:Integer;
+ label fin;
+Begin
+Result:='';
+  scHndl := OpenSCManager(PChar(MachineName), Nil, GENERIC_READ);
+  sHndl:=0;
+   If scHndl = 0 Then goto fin;
+   sHndl:=OpenService(scHndl,pchar(SvcName),SERVICE_QUERY_CONFIG);
+    if sHndl=0 then goto fin;
+      QueryServiceConfig (sHndl, nil, 0, pcbBytesNeeded);
+       if GetLastError = ERROR_INSUFFICIENT_BUFFER then
+        begin
+         cbBuffSize := pcbBytesNeeded;
+         // Берем память
+         GetMem(lpServiceConfig, pcbBytesNeeded);
+         // Получаем расширенную информацию по сервису
+         if QueryServiceConfig (sHndl, lpServiceConfig,cbBuffSize, pcbBytesNeeded) then
+           Begin
+             Result:=lpServiceConfig^.lpBinaryPathName;
+             if instr(result,'"')>0
+              then result:=FindBracket(Result,'"','"')
+              else result:=getfirstword(result);
+           End;
+         FreeMem(lpServiceConfig);
+         //fucking borland mm :)
+        End;//ERROR_INSUFFICIENT_BUFFER
+fin:
+ le:=GetLastError;
+ CloseServiceHandle(sHndl);
+ CloseServiceHandle(SCHndl);
+ SetLastError(le);
+End;//GetServicePathBySvcName
+
+Function SvcSendControl(svcName:String;Control:Integer;MachineName:String=''):Integer;
+ Var scHndl, sHndl: THandle;
+     rsltstatus:TServiceStatus;
+ label fin;
+Begin
+  scHndl := OpenSCManager(PChar(MachineName), Nil, GENERIC_EXECUTE);
+  sHndl:=0;
+   If scHndl = 0 Then goto fin;
+   sHndl:=OpenService(scHndl,pchar(SvcName),GENERIC_EXECUTE);
+    if sHndl=0 then goto fin;
+     ControlService(sHndl,control,rsltstatus);
+
+fin:
+ result:=GetLastError;
+ CloseServiceHandle(sHndl);
+ CloseServiceHandle(SCHndl); 
+End;//SvcSendControl
+
+
+
+Function SvcGetState(SvcName:String;MachineName:String=''):Integer;
+//Вернёт 0 в случае неустановленного сервиса\ошибки или состояние
+//в формате QueryServiceStatus.dwCurrentState
+//SERVICE_STOPPED	The service is not running.
+//SERVICE_START_PENDING	The service is starting.
+//SERVICE_STOP_PENDING	The service is stopping.
+//SERVICE_RUNNING	The service is running.
+//SERVICE_CONTINUE_PENDING	The service continue is pending.
+//SERVICE_PAUSE_PENDING	The service pause is pending.
+//SERVICE_PAUSED	The service is paused.
+Var scHndl, sHndl: THandle;
+ lpSvcStatus:TServiceStatus;
+ le:Integer;
+label fin;
+Begin
+  Result:=0;
+  scHndl := OpenSCManager(PChar(MachineName), Nil, GENERIC_READ);
+  sHndl:=0;
+   If scHndl = 0 Then goto fin;
+   sHndl:=OpenService(scHndl,pchar(SvcName),SERVICE_QUERY_STATUS);
+    if sHndl=0 then goto fin;
+     QueryServiceStatus(sHndl,lpSvcStatus);
+     Result:=lpSvcStatus.dwCurrentState;
+fin:
+ le:=GetLastError;
+ CloseServiceHandle(sHndl);
+ CloseServiceHandle(SCHndl);
+ SetLastError(le);
+End;//GetServiceState
+
+
+Function SvcSetState(SvcName:String;SvcState:Integer;MachineName:String=''):Integer;
+//Запустит\остановит\продолжит\поставит паузу сервису SvcName на машине MachineName
+//Вернёт SvcState в случае успеха или 0 в случае отказа
+//Понимает SERVICE_STOPPED, SERVICE_PAUSED, SERVICE_RUNNING, на остальное -
+//SetLastError(Параметр задан неверно=87=ERROR_INVALID_PARAMETER)
+ Var scHndl, sHndl: THandle;
+     PAC:PAnsiChar;
+ rsltstatus,lpSvcStatus:TServiceStatus;
+ le:Integer;
+label fin;
+Begin
+  Result:=0;
+  pac:=nil;
+  if not SvcState in [SERVICE_STOPPED, SERVICE_PAUSED, SERVICE_RUNNING] then
+   Begin
+    SetLastError(ERROR_INVALID_PARAMETER);
+    exit;
+   End;//типа защита венды от дурака - не финализируемся, ибо нечего финализировать
+  scHndl := OpenSCManager(PChar(MachineName), Nil, GENERIC_READ or GENERIC_EXECUTE);
+  sHndl:=0;
+   If scHndl = 0 Then goto fin;
+   sHndl:=OpenService(scHndl,pchar(SvcName),GENERIC_READ or GENERIC_EXECUTE);
+    if sHndl=0 then goto fin;
+     QueryServiceStatus(sHndl,lpSvcStatus);
+    Case lpSvcStatus.dwCurrentState of
+      SERVICE_STOPPED:
+        Begin
+         Case SvcState of //Чего хотим
+          SERVICE_STOPPED:
+            Result:=SERVICE_STOPPED;
+          SERVICE_PAUSED:
+            if ControlService(sHndl,SERVICE_CONTROL_PAUSE,rsltstatus)
+             then Result:=SERVICE_PAUSED;
+          SERVICE_RUNNING:
+//            if StartService(sHndl,1,PAC)
+            if StartService(sHndl,0,PAC)
+             then Result:= SERVICE_RUNNING
+         End;//Select
+        End;//SERVICE_STOPPED:
+
+      SERVICE_START_PENDING,
+      SERVICE_STOP_PENDING,
+      SERVICE_CONTINUE_PENDING,
+      SERVICE_PAUSE_PENDING:
+        Begin
+         Case SvcState of //Чего хотим
+          SERVICE_STOPPED:
+            if ControlService(sHndl,SERVICE_CONTROL_STOP,rsltstatus)
+             then Result:=SERVICE_STOPPED;
+          SERVICE_PAUSED:
+            if ControlService(sHndl,SERVICE_CONTROL_PAUSE,rsltstatus)
+             then Result:=SERVICE_PAUSED;
+          SERVICE_RUNNING:
+            if ControlService(sHndl,SERVICE_CONTROL_CONTINUE,rsltstatus)
+             then Result:=SERVICE_RUNNING;
+         End;//Select
+        End;//pending - грязнейший хак :(
+
+      SERVICE_RUNNING:
+       Begin
+         Case SvcState of //Чего хотим
+          SERVICE_STOPPED:
+            if ControlService(sHndl,SERVICE_CONTROL_STOP,rsltstatus)
+             then Result:=SERVICE_STOPPED;
+          SERVICE_PAUSED:
+            if ControlService(sHndl,SERVICE_CONTROL_PAUSE,rsltstatus)
+             then Result:=SERVICE_PAUSED;
+          SERVICE_RUNNING:
+             Result:= SERVICE_RUNNING
+         End;//Select
+       End;//SERVICE_RUNNING:
+      SERVICE_PAUSED:
+       Begin
+         Case SvcState of //Чего хотим
+          SERVICE_STOPPED:
+            if ControlService(sHndl,SERVICE_CONTROL_STOP,rsltstatus)
+             then Result:=SERVICE_STOPPED;
+          SERVICE_PAUSED:
+           Result:=SERVICE_PAUSED;
+          SERVICE_RUNNING:
+            if ControlService(sHndl,SERVICE_CONTROL_CONTINUE,rsltstatus)
+             then Result:=SERVICE_RUNNING;
+         End;//Select
+       End//paused
+      Else
+        Begin
+         ;
+        End;//else
+    End;//select
+fin:
+ le:=GetLastError;
+ CloseServiceHandle(sHndl);
+ CloseServiceHandle(SCHndl);
+ SetLastError(le);
+End;//SetServiceState
+
+Function SvcInstall(exepath,svcname,dsplname:String;
+                    svcdesc:String='';verbose:Boolean=False;
+                    reinstall:Boolean=True;MachineName:String='';
+                    ServiceType:Integer=SERVICE_WIN32_OWN_PROCESS):Integer;
+//Установит как сервис svcname (то, что надо набрать в net start)
+//с именем dsplname и описанием svcdesc исполнимый файл exepath на машину machinename,
+//при этом если такой сервис уже есть - переустановит его если reinstall=true
+//Внимание! verbose=true будет вызывать write(ln), использовать только в консольных
+//приложениях!
+Var
+    scHndl, sHndl: THandle;
+label fin;
+Begin
+ Result:=ERROR_SUCCESS;
+ if verbose then Write('Connecting Service Control Manager...');
+ scHndl := OpenSCManager(PChar(MachineName), Nil, SC_MANAGER_CREATE_SERVICE);
+ sHndl:=INVALID_HANDLE_VALUE;//no warning
+ If scHndl = 0 Then
+  Begin
+   Result := GetLastError;
+   if verbose then Writeln('Failed!');
+   if verbose then Writeln('Error: '+ GleStr(Result));
+   goto fin;
+  End;//exit
+ if verbose then Writeln('Ok');
+ if verbose then Write('Creating service database record...');
+ sHndl := CreateService(
+          SCHndl, PChar(svcname), PChar(DsplName),
+          SERVICE_QUERY_CONFIG Or SERVICE_CHANGE_CONFIG, ServiceType, SERVICE_AUTO_START,
+          SERVICE_ERROR_NORMAL, PChar(exepath), Nil, Nil, Nil, Nil, Nil);
+
+
+
+ If sHndl = 0 Then
+  Begin
+   Result := GetLastError;
+   if verbose then Writeln('Failed!');
+   if verbose then Writeln('Error: '+int2str(Result)+': '+ GleStr(Result));
+   if result=1073 then
+    Begin
+     if reinstall then
+      Begin
+       if verbose then Writeln('Attempting to reinstall service...');
+        CloseServiceHandle(sHndl);
+        CloseServiceHandle(SCHndl);
+       if SvcUninstall(svcname,MachineName,verbose)=ERROR_SUCCESS then
+        Result:=SvcInstall(exepath,svcname,dsplname,svcdesc,verbose,false,MachineName,ServiceType);
+      End;//if reinstall
+      exit;
+    End;//reinstall svc
+   goto fin;
+  End;//exit
+ if verbose then Writeln('Ok');
+ If svcdesc <> '' Then
+  Begin
+   if verbose then Write('Setting service description...');
+    If Not SetServiceDescription(sHndl, svcdesc) Then
+     Begin
+      if verbose then Writeln('Failed!');
+      if verbose then Writeln('Warning: '+ GLEStr(GetLastError));
+      if verbose then Writeln('Warning: SetServiceDesc() failed, but service is installed!');
+     End
+    Else
+     Begin
+      if verbose then Writeln('Ok');
+     End;//!Warn
+  End;//if svcdesc needed
+if verbose then Writeln('Service "'+ dsplname+ '" install success.');
+fin:
+ CloseServiceHandle(sHndl);
+ CloseServiceHandle(SCHndl);
+End;

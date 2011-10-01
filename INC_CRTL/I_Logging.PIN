@@ -1,0 +1,68 @@
+Function AppendToFile(FileName:String;Expr:String;AddCrLf:Boolean=True):Boolean;
+ var f:TextFile;
+Begin
+if not(Fileexists(Filename)) then StringToFile('',FileName);
+  AssignFile(F,FileName);
+  {$i-}
+  Append(F);
+  result:=IOResult=0;
+  if not result then exit;
+  if AddCrLf then Expr:=Expr+vbcrlf;
+  Write(F,Expr);
+  Flush(F);
+  CloseFile(F);
+  {$i+}  
+End;
+
+Function GetLogMsg(Expr:String;MultiStringWithDT:Boolean=True;prefix:String=''):String;
+var  nw:String;
+     SA:TStrArray;
+     j:Integer;
+Begin
+nw:=FormatMoment(now,'%D0%.%M0%.%YY% %H0%:%I0%:%S0%'#9)+prefix;
+if MultiStringWithDT then
+ Begin
+  SplitToParagraphs(Expr,SA);
+   for j:=0 to high(SA) do SA[j]:=nw+SA[j];
+   Result:=join(SA,vbcrlf);
+ End
+Else
+ Result:=nw+Expr;
+End;
+
+Procedure AppendLogMsg(FileName:String;Expr:String;MultiStringWithDT:Boolean=True);
+Begin
+ AppendToFile(FileName,GetLogMsg(Expr,MultiStringWithDT));
+End;
+
+
+Procedure AppendCryptedLogMsg(FileName:String;Expr:String);
+var  nw:String;
+     CS:String;
+Begin
+ nw:=FormatMoment(now,'%D0%.%M0%.%YY% %H%:%I0%:%S0%.%e0%'#9);
+ CS:=CryptString(Expr,nw);
+ AppendToFile(FileName,nw+CS);
+End;
+
+
+Function ViewCryptedLogMsg(Msg:String):String;
+Var s,k:String;
+Begin
+ k:=GetWordByNo(Msg,0,True)+#32+GetWordByNo(Msg,1,True)+#9;
+ s:=GetWordByNo(Msg,2,True);
+ Result:=k+DeCryptString(s,k);
+End;
+
+Function CryptedLogFileToRegularString(FileName:String):String;
+Var SA:TStrArray;
+    S:String;
+    j:Integer;
+Begin
+ S:=FileToString(FileName);
+ SplitToParagraphs(S,SA);
+ For j:=0 to high(SA) do
+  SA[j]:=ViewCryptedLogMsg(SA[j]);
+ Result:=join(SA,vbcrlf);
+End;
+

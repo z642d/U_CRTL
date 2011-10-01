@@ -1,0 +1,161 @@
+
+
+Function NoteFreq(note:Byte):Integer;
+Var Freq:Double;
+Begin
+ Freq:=440*Power(2,(note-57)/12);
+ Result:=Round(Freq);
+End;
+
+Procedure PlayNote(Note:Integer;TactLength:Integer);
+Var f,l:Word;
+Begin
+ DivMod(Note,256,l,f);
+ if f<>0 then f:=NoteFreq(f);
+ l:=TactLength div l;
+ if f=0 then sleep(l) else Beep(f,l);
+End;
+
+Procedure PlayMusic(Var melody:TIntArray);
+Var Tact:integer;
+    j:Integer;
+    ct:TCoolType; 
+Begin
+ Tact:=1000;
+ For j:=0 to high(melody) do
+  Begin
+   ct.Int:=melody[j];
+   Case ct.Bt[3] of
+    0:
+     Begin
+      if ct.Int=0 then sleep(0) else PlayNote(ct.Int,tact);
+     End
+    else
+     Begin
+      Tact:=ct.Int mod $01000000;
+     End;
+   End;//Select
+  End;//for
+End; 
+
+Function StringToMelody(MusString:String; var melody:TIntArray):Boolean;
+Var S:String;
+    SA:TStrArray;
+    j:Integer;
+    note,delay:Integer;
+Label err,fin;
+ Function GetBracketContent(S:String):String;
+  Var SA1:TStrArray;
+ Begin
+  Result:='';
+  SplitByBrackets(S,'(',')',SA1,True);
+  if Length(SA1)=1 then Result:=SA1[0];
+ End;//GetBracketContent
+
+Begin
+Result:=False;
+S:=KillComments(MusString);
+S:=UCAse(S);
+SplitToWords(S,SA);
+Note:=0;
+SetLength(melody,0);
+ For j:=0 to High(SA) do
+  Begin
+   Case SA[j][1] of
+    'T':
+      Begin
+       Note:=Str2Int(GetBracketContent(SA[j]),0);
+       if note=0 then goto err;
+       Note:=$01000000+Note;
+      End;//T
+    'P':
+      Begin
+       Note:=Str2Int(GetBracketContent(SA[j]),0);
+       if note=0 then goto err;
+       Note:=Note shl 8;
+      End;//P
+    '!':
+      Begin
+       Note:=0
+      End;//P
+    'C','D','E','F','G','A','B','H':
+     Begin
+      Case SA[j][1] of
+       'C':
+        Begin
+         Note:=Str2Int(SA[j][2],0);
+         if note=0 then goto err;
+         Delay:=Str2Int(GetBracketContent(SA[j]),0);
+         if Delay=0 then goto err;
+         Note:=(Delay shl 8)+Note*12+0;
+        End;//C
+      'D':
+        Begin
+         Note:=Str2Int(SA[j][2],0);
+         if note=0 then goto err;
+         Delay:=Str2Int(GetBracketContent(SA[j]),0);
+         if Delay=0 then goto err;
+         Note:=(Delay shl 8)+Note*12+2;
+        End;//D
+      'E':
+        Begin
+         Note:=Str2Int(SA[j][2],0);
+         if note=0 then goto err;
+         Delay:=Str2Int(GetBracketContent(SA[j]),0);
+         if Delay=0 then goto err;
+         Note:=(Delay shl 8)+Note*12+4;
+        End;//E
+      'F':
+        Begin
+         Note:=Str2Int(SA[j][2],0);
+         if note=0 then goto err;
+         Delay:=Str2Int(GetBracketContent(SA[j]),0);
+         if Delay=0 then goto err;
+         Note:=(Delay shl 8)+Note*12+5;
+        End;//F
+      'G':
+        Begin
+         Note:=Str2Int(SA[j][2],0);
+         if note=0 then goto err;
+         Delay:=Str2Int(GetBracketContent(SA[j]),0);
+         if Delay=0 then goto err;
+         Note:=(Delay shl 8)+Note*12+7;
+        End;//G
+      'A':
+        Begin
+         Note:=Str2Int(SA[j][2],0);
+         if note=0 then goto err;
+         Delay:=Str2Int(GetBracketContent(SA[j]),0);
+         if Delay=0 then goto err;
+         Note:=(Delay shl 8)+Note*12+9;
+        End;//A
+      'B','H':
+        Begin
+         Note:=Str2Int(SA[j][2],0);
+         if note=0 then goto err;
+         Delay:=Str2Int(GetBracketContent(SA[j]),0);
+         if Delay=0 then goto err;
+         Note:=(Delay shl 8)+Note*12+11;
+        End;//B,H
+      End;//Select
+      Case SA[j][3] of
+       '+':Note:=Note+1;
+       '=':;
+       '-':Note:=Note-1;
+       Else goto err;
+      End;//Select Sharpz
+    End;//IsNoteSym    
+    else
+     Begin
+      Goto err;
+     End;
+   End;//Select
+  AppendElement(Melody,Note);  
+  End;//For
+goto fin;  
+err:
+ SetLength(Melody,0);
+ exit;
+fin:
+ Result:=True;
+End;//StringToMelody

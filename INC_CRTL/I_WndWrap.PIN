@@ -1,0 +1,147 @@
+Function GetWndClassName(hWnd:Integer):String;
+Var p:PChar;
+Begin
+GetMem(p,$FF);
+GetClassName(hWnd,p,$FF);
+Result:=p;
+FreeMem(p);
+End;//GetWndClassName
+
+Function GetWndCaption(hWnd:Integer):String;
+Var p:PChar;
+    l:Integer;
+Begin
+l:=GetWindowTextLength(hWnd)+1;
+if l=0 then
+ Begin
+  Result:='';
+  exit;
+ End;
+GetMem(p,l);
+GetWindowText(hWnd,p,l);
+Result:=p;
+FreeMem(p);
+End;//GetWndCaption
+
+Procedure SetWndCaption(HWnd:Integer;S:String);
+Begin
+if not SetWindowText(HWnd,PChar(S)) then gle;
+End;//SetWndCaption
+
+Function IsWndTopMost(hWnd:Integer):Boolean;
+Begin
+Result:=IsBitsSet(GetWindowLong(HWnd,GWL_EXSTYLE),WS_EX_TOPMOST);
+End;
+
+Function GetWndInfo(hWnd:Integer):Byte;
+Begin
+Result:=0;
+if IsZoomed(hWnd) then result:=2 else
+   if not(IsIconic(hwnd)) then result:=1;
+If IsWindowVisible(HWnd) then result:=result or 4;
+if IsWindowEnabled(HWnd) then result:=result or 8;
+IF IsWndTopMost(HWnd) then result:=result or 16;
+End;
+
+Procedure SetWndTopMost(HWnd:Integer;bTopMost:Boolean);
+var TWP:TWindowPlacement;
+begin
+twp.length:=SizeOf(TWP);
+GetWindowPlacement(hWnd,PWindowPlacement(@TWP));
+With TWP.rcNormalPosition do
+ if bTopMost then
+   SetWindowPos(hWnd,HWND_TOPMOST,
+     Left,top,Right-left,bottom-top,TWP.showCmd)
+ Else
+   SetWindowPos(hWnd,HWND_NOTOPMOST,
+     Left,top,Right-left,bottom-top,TWP.showCmd)
+end;
+
+Function SetWndInfo(hWnd:Integer;Info:Byte):Boolean;
+var TWP:TWindowPlacement;
+Begin
+Result:=False;
+twp.length:=SizeOf(TWP);
+GetWindowPlacement(hWnd,PWindowPlacement(@TWP));
+Case info mod 4 of
+ 0:twp.showCmd:=SW_SHOWMINIMIZED;
+ 1:twp.showCmd:=SW_NORMAL;
+ 2:twp.showCmd:=SW_SHOWMAXIMIZED;
+ End;//select
+SetWindowPlacement(hWnd,PWindowPlacement(@TWP));
+if not(IsBitsSet(info,4)) then ShowWindow(hWnd,SW_Hide); 
+EnableWindow(hWnd,IsBitsSet(info,8));
+SetWndTopMost(hWnd,IsBitsSet(info,16));
+End;
+
+Function GetWndPos(hWnd:Integer):TRect;
+var TWP:TWindowPlacement;
+Begin
+twp.length:=SizeOf(TWP);
+GetWindowPlacement(hWnd,PWindowPlacement(@TWP));
+Result:=TWP.rcNormalPosition; 
+End;//GetWndPos
+
+Procedure ShowWnd(hWnd:Integer;bVisible:Boolean);
+Begin
+ShowWindow(hWnd,SW_SHOW*Bool2Int(bVisible));
+End;//ShowWnd
+
+Function WaitForWndEx(Caption,ClsName:PChar;ProgressProc:TProgressProc):Integer;
+Begin
+While True do
+ Begin
+  Result:=FindWindow(ClsName,Caption);
+  If Result<>0
+   then
+    Begin
+     If Assigned(ProgressProc) then
+      If not(ProgressProc(1,1,UCRTL_ID_WAIT4WND)) then exit;
+    End
+   else
+    Begin
+     If Assigned(ProgressProc) then
+      If not(ProgressProc(0,1,UCRTL_ID_WAIT4WND)) then exit;
+    End;
+  Sleep(10);  
+ End;
+End;//WaitForWndEx
+
+Function Wait4Wnd(Caption:String;ClsName:String='';ProgressProc:TProgressProc=nil):Integer;
+var n,c:PChar;
+Begin
+ n:=PChar(Caption);
+ if ClsName='' then c:=nil else c:=PChar(ClsName);
+ While True do
+  Begin
+   Result:=FindWindow(c,n);
+    if result=0 then
+     Begin
+      If Assigned(ProgressProc) then
+       If not(ProgressProc(0,1,UCRTL_ID_WAIT4WND)) then exit;
+     End
+    Else
+     exit;
+   Sleep(10);  
+  End;
+End;//Wait4Wnd
+
+Procedure Wait4WndDie(Caption:String;ClsName:String='';ProgressProc:TProgressProc=nil);
+var n,c:PChar;
+Begin
+ n:=PChar(Caption);
+ if ClsName='' then c:=nil else c:=PChar(ClsName);
+ While True do
+  Begin
+    if FindWindow(c,n)<>0 then
+     Begin
+      If Assigned(ProgressProc) then
+       If not(ProgressProc(1,1,UCRTL_ID_WAIT4WND)) then exit;
+     End
+    Else
+     exit;
+   Sleep(10);     
+  End;
+End;//Wait4WndDie
+
+
